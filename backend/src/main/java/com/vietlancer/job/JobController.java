@@ -54,6 +54,15 @@ public class JobController {
         return jobService.mine(user);
     }
 
+    /** Gợi ý job phù hợp cho freelancer dựa trên AI phân tích kỹ năng + bio. */
+    @GetMapping("/suggested")
+    public List<JobDto> suggested(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw com.vietlancer.common.ApiException.forbidden("Chưa đăng nhập");
+        }
+        return jobService.suggestedFor(user);
+    }
+
     @GetMapping("/{id}")
     public JobDto get(@PathVariable Long id) {
         return jobService.get(id);

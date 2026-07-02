@@ -3,6 +3,8 @@ package com.vietlancer.review;
 import com.vietlancer.common.ApiException;
 import com.vietlancer.job.Job;
 import com.vietlancer.job.JobService;
+import com.vietlancer.notification.Notification;
+import com.vietlancer.notification.NotificationService;
 import com.vietlancer.user.User;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -27,6 +29,7 @@ public class ReviewController {
 
     private final ReviewRepository reviewRepository;
     private final JobService jobService;
+    private final NotificationService notificationService;
 
     public record CreateReviewBody(
             @NotNull Long jobId,
@@ -64,6 +67,9 @@ public class ReviewController {
                 .rating(body.rating())
                 .comment(body.comment())
                 .build());
+        notificationService.notify(reviewee, Notification.Type.NEW_REVIEW,
+                "%s vừa đánh giá bạn %d⭐ cho \"%s\"".formatted(user.getFullName(), body.rating(), job.getTitle()),
+                "/profile/" + reviewee.getId());
         return toDto(review);
     }
 

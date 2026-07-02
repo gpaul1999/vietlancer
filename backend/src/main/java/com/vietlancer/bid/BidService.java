@@ -4,6 +4,8 @@ import com.vietlancer.chat.ChatService;
 import com.vietlancer.common.ApiException;
 import com.vietlancer.job.Job;
 import com.vietlancer.job.JobRepository;
+import com.vietlancer.notification.Notification;
+import com.vietlancer.notification.NotificationService;
 import com.vietlancer.subscription.SubscriptionService;
 import com.vietlancer.user.Role;
 import com.vietlancer.user.User;
@@ -25,6 +27,7 @@ public class BidService {
     private final WalletService walletService;
     private final SubscriptionService subscriptionService;
     private final ChatService chatService;
+    private final NotificationService notificationService;
 
     @Value("${app.platform.free-bids-per-month}")
     private int freeBidsPerMonth;
@@ -46,13 +49,18 @@ public class BidService {
         }
         enforceMonthlyLimit(freelancer);
 
-        return bidRepository.save(Bid.builder()
+        var bid = bidRepository.save(Bid.builder()
                 .job(job)
                 .freelancer(freelancer)
                 .amount(request.amount())
                 .deliveryDays(request.deliveryDays())
                 .coverLetter(request.coverLetter())
                 .build());
+
+        notificationService.notify(job.getClient(), Notification.Type.NEW_BID,
+                "%s vừa chào giá cho \"%s\"".formatted(freelancer.getFullName(), job.getTitle()),
+                "/jobs/" + job.getId());
+        return bid;
     }
 
     /**
@@ -77,7 +85,12 @@ public class BidService {
         bid.setStatus(Bid.Status.ACCEPTED);
         bidRepository.findByJobIdAndStatus(job.getId(), Bid.Status.PENDING).stream()
                 .filter(other -> !other.getId().equals(bid.getId()))
-                .forEach(other -> other.setStatus(Bid.Status.REJECTED));
+                .forEach(other -> {
+                    other.setStatus(Bid.Status.REJECTED);
+                    notificationService.notify(other.getFreelancer(), Notification.Type.BID_REJECTED,
+                            "Chào giá của bạn cho \"%s\" không được chọn".formatted(job.getTitle()),
+                            "/jobs/" + job.getId());
+                });
 
         job.setStatus(Job.Status.IN_PROGRESS);
         job.setAssignedFreelancer(bid.getFreelancer());
@@ -85,6 +98,10 @@ public class BidService {
         jobRepository.save(job);
 
         chatService.openForAcceptedBid(job, bid.getFreelancer());
+        notificationService.notify(bid.getFreelancer(), Notification.Type.BID_ACCEPTED,
+                "🎉 Bạn được chọn cho \"%s\"! Tiền đã vào escrow, bắt đầu làm việc thôi."
+                        .formatted(job.getTitle()),
+                "/jobs/" + job.getId());
         return bidRepository.save(bid);
     }
 

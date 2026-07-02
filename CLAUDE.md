@@ -25,7 +25,9 @@ dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchai
 
 ## Kiến trúc backend
 
-- Package theo domain: `user`, `topic`, `job`, `bid`, `chat`, `review`, `subscription`, `wallet`, `ai`, `config`, `common`.
+- Package theo domain: `user`, `topic`, `job`, `bid`, `chat`, `review`, `subscription`, `wallet`, `ai`, `notification`, `config`, `common`.
+- **Kiến trúc: modular monolith có chủ đích** — escrow cần ACID một transaction; ranh giới tách
+  microservice = ranh giới package (lộ trình tách + tín hiệu kích hoạt: PLAN.md mục 5).
 - AI classifier là **pluggable** (`ai/TopicClassifier` — sealed interface): `local-hybrid` mặc định (miễn phí),
   `claude` bật qua `APP_AI_CLASSIFIER=claude` + `ANTHROPIC_API_KEY`, luôn bọc trong `ResilientClassifier` để fallback về local.
 - Luật nghiệp vụ cốt lõi (không được phá vỡ khi sửa code):
@@ -33,6 +35,10 @@ dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchai
   2. Chat chỉ mở khi bid được chấp nhận HOẶC cả hai bên có Premium còn hạn (`ChatService.canChat`).
   3. Tiền đi qua escrow: accept bid → hold; complete → release trừ phí nền tảng; cancel → refund.
   4. Freelancer free tier: giới hạn bid/tháng (`app.platform.free-bids-per-month`); Premium không giới hạn.
+  5. Thông báo là non-critical: mọi hook notify phải đi qua `NotificationService.notify`
+     (REQUIRES_NEW + try/catch + chống spam theo type+link) — không được ném lỗi vào nghiệp vụ chính.
+  6. Rate limit: `RateLimitFilter` (auth 20 req/phút/IP, api 300 req/phút/IP) — in-memory,
+     chuyển Redis khi chạy nhiều instance.
 
 ---
 

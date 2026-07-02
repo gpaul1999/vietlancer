@@ -2,6 +2,8 @@ package com.vietlancer.chat;
 
 import com.vietlancer.common.ApiException;
 import com.vietlancer.job.Job;
+import com.vietlancer.notification.Notification;
+import com.vietlancer.notification.NotificationService;
 import com.vietlancer.subscription.SubscriptionService;
 import com.vietlancer.user.User;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ public class ChatService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final SubscriptionService subscriptionService;
+    private final NotificationService notificationService;
 
     /**
      * LUẬT NHẮN TIN: client và freelancer chỉ được chat với nhau khi
@@ -61,11 +64,20 @@ public class ChatService {
         if (!canChat(conversation.getJob(), conversation.getFreelancer())) {
             throw ApiException.forbidden("Quyền nhắn tin đã hết hiệu lực (gói Premium hết hạn?)");
         }
-        return messageRepository.save(Message.builder()
+        var message = messageRepository.save(Message.builder()
                 .conversation(conversation)
                 .sender(sender)
                 .content(content)
                 .build());
+
+        var recipient = conversation.getClient().getId().equals(sender.getId())
+                ? conversation.getFreelancer()
+                : conversation.getClient();
+        // NotificationService tự chống spam: 1 thông báo chưa đọc / hội thoại
+        notificationService.notify(recipient, Notification.Type.NEW_MESSAGE,
+                "Tin nhắn mới từ %s".formatted(sender.getFullName()),
+                "/messages?c=" + conversation.getId());
+        return message;
     }
 
     Conversation find(Long id) {

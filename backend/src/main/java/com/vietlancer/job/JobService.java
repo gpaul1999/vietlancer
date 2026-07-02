@@ -3,6 +3,8 @@ package com.vietlancer.job;
 import com.vietlancer.ai.TopicClassifier;
 import com.vietlancer.bid.BidRepository;
 import com.vietlancer.common.ApiException;
+import com.vietlancer.notification.Notification;
+import com.vietlancer.notification.NotificationService;
 import com.vietlancer.subscription.SubscriptionService;
 import com.vietlancer.topic.TopicRepository;
 import com.vietlancer.user.Role;
@@ -30,6 +32,7 @@ public class JobService {
     private final TopicClassifier topicClassifier;
     private final SubscriptionService subscriptionService;
     private final WalletService walletService;
+    private final NotificationService notificationService;
 
     @Value("${app.platform.fee-percent}")
     private int feePercent;
@@ -99,6 +102,33 @@ public class JobService {
         return jobs.stream().map(this::toDto).toList();
     }
 
+    /**
+     * Gợi ý job cho freelancer: chạy AI classifier trên chuỗi kỹ năng + bio của freelancer
+     * để suy ra các topic sở trường, rồi lấy job OPEN thuộc các topic đó (loại trừ job đã bid).
+     */
+    @Transactional(readOnly = true)
+    public List<JobDto> suggestedFor(User freelancer) {
+        var profileText = String.join(". ",
+                freelancer.getSkills() == null ? "" : freelancer.getSkills().replace(',', ' '),
+                freelancer.getBio() == null ? "" : freelancer.getBio());
+        if (profileText.isBlank()) {
+            return List.of();
+        }
+        var result = topicClassifier.classify("", profileText);
+        var slugs = result.topics().stream()
+                .map(TopicClassifier.TopicScore::slug)
+                .filter(slug -> !"other".equals(slug))
+                .toList();
+        if (slugs.isEmpty()) {
+            return List.of();
+        }
+        return jobRepository
+                .findOpenByTopicsExcludingBidder(Job.Status.OPEN, slugs, freelancer.getId(), PageRequest.of(0, 6))
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
     /** Client xác nhận hoàn thành → giải ngân escrow cho freelancer (trừ phí nền tảng). */
     @Transactional
     public JobDto complete(User client, Long jobId) {
@@ -110,6 +140,10 @@ public class JobService {
         walletService.releaseEscrow(job.getClient(), job.getAssignedFreelancer(), job.getEscrowAmount(),
                 feePercent, "Thanh toán job #%d: %s".formatted(job.getId(), job.getTitle()));
         job.setStatus(Job.Status.COMPLETED);
+        notificationService.notify(job.getAssignedFreelancer(), Notification.Type.JOB_COMPLETED,
+                "Job \"%s\" đã hoàn thành — tiền đã về ví của bạn. Đừng quên đánh giá client!"
+                        .formatted(job.getTitle()),
+                "/jobs/" + job.getId());
         return toDto(jobRepository.save(job));
     }
 

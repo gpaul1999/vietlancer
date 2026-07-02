@@ -77,13 +77,63 @@ Subscription(id, user, plan, startsAt, expiresAt)
 Wallet(id, user, balance, escrowBalance) / WalletTransaction(id, wallet, type, amount, note)
 ```
 
-## 5. Lộ trình
+## 5. Quyết định kiến trúc: Modular Monolith → tách service theo nhu cầu
 
-- **Phase 1 (MVP — đang làm)**: toàn bộ mục 3, thanh toán mô phỏng, classifier local.
-- **Phase 2**: cổng thanh toán thật (VNPay/MoMo), WebSocket chat real-time, upload file/portfolio, thông báo đẩy, admin dashboard.
-- **Phase 3**: chuyển classifier sang Claude API, gợi ý freelancer phù hợp cho job (matching), gợi ý job cho freelancer, phân tích giá thị trường.
+**Hiện tại: modular monolith có chủ đích** (không phải "monolith vì lười"):
 
-## 6. Chạy dự án
+- Escrow cần **ACID trong một transaction** (trừ ví + giữ escrow + đổi trạng thái job + reject bid khác).
+  Tách service ở giai đoạn này = distributed transaction/saga → phức tạp và dễ sai hơn rất nhiều.
+- Codebase đã chia **package theo domain** (user/job/bid/chat/wallet/ai/notification…), giao tiếp qua
+  service interface — đây chính là "microservice-ready": tách ra là cắt theo đường có sẵn.
+- Chi phí vận hành microservice (deploy, observability, versioning API nội bộ) chưa được trả lại
+  bằng lợi ích gì khi chưa có traffic.
+
+**Lộ trình tách khi có tín hiệu** (theo thứ tự ưu tiên):
+
+| Service tách ra | Vì sao tách trước | Tín hiệu kích hoạt |
+|---|---|---|
+| `ai-classifier` | Stateless, không cần DB chung, scale độc lập, có thể viết Python nếu cần model riêng | Phân loại chậm ảnh hưởng đăng job, hoặc muốn GPU/model riêng |
+| `notification` | Fire-and-forget, hợp queue (Kafka/RabbitMQ), thêm email/push không đụng core | Gửi email/push volume lớn |
+| `chat` | WebSocket connection-heavy, scale theo connection chứ không theo CPU | >10k concurrent connections |
+| `wallet/payment` | Yêu cầu audit/compliance riêng khi tích hợp cổng thanh toán thật | Tích hợp VNPay/MoMo + khối lượng giao dịch lớn |
+
+Core marketplace (user/job/bid/review) giữ chung một service lâu nhất — chúng chia sẻ transaction.
+
+## 6. Lộ trình tính năng — cạnh tranh trực tiếp với vLancer
+
+### ✅ Phase 1 — MVP (XONG)
+Toàn bộ mục 3 + thông báo in-app, danh bạ freelancer, **AI gợi ý job theo kỹ năng**,
+rate limiting, tests (unit + integration).
+
+### Phase 2 — Trải nghiệm & tăng trưởng (ưu tiên kế tiếp)
+| Tính năng | Ghi chú | vLancer có? |
+|---|---|---|
+| WebSocket chat real-time + typing indicator | Thay polling 5s hiện tại | Có (cơ bản) |
+| Upload file: avatar, portfolio, đính kèm job/chat | S3-compatible storage | Có |
+| Cổng thanh toán VNPay/MoMo/ZaloPay | Thay deposit mô phỏng | Có |
+| **Thanh toán theo milestone** | Chia job lớn thành mốc, escrow từng mốc — giảm rủi ro 2 bên | Không rõ → **lợi thế** |
+| **Trung tâm giải quyết tranh chấp** | Khiếu nại, admin phân xử escrow — xây niềm tin | Yếu → **lợi thế** |
+| Email notification + job alert theo topic đã lưu | Digest hằng ngày | Có |
+| Lưu job yêu thích, lịch sử xem | | Có |
+| Admin dashboard: duyệt user, gỡ job xấu, thống kê | | — |
+| SEO: SSR trang public, sitemap, schema.org JobPosting | Kéo organic traffic — kênh lớn nhất của vLancer | Có |
+| Xác thực: OTP điện thoại, KYC freelancer (huy hiệu "Đã xác minh") | | Có (KYC yếu) |
+
+### Phase 3 — AI làm khác biệt hóa (moat thật sự so với vLancer)
+| Tính năng | Mô tả |
+|---|---|
+| Claude classifier | Bật engine `claude` (code sẵn) khi có doanh thu |
+| **AI matching 2 chiều** | Xếp hạng freelancer phù hợp nhất cho từng job (skill × topic × rating × lịch sử) và ngược lại |
+| **AI gợi ý giá** | Phân tích bid lịch sử theo topic → gợi ý ngân sách cho client, giá chào cho freelancer |
+| **AI hỗ trợ viết mô tả job** | Client nhập 2-3 dòng → AI sinh mô tả đầy đủ, rõ phạm vi (giảm tranh chấp) |
+| AI chấm chất lượng bid | Cảnh báo bid spam/copy-paste cho client |
+| AI phát hiện gian lận | Pattern giao dịch bất thường, tài khoản ảo |
+
+### Phase 4 — Scale
+Tách service theo mục 5, Redis (cache + rate limit phân tán), Elasticsearch cho search,
+mobile app (React Native — tái dùng API), i18n tiếng Anh mở rộng thị trường.
+
+## 7. Chạy dự án
 
 ```bash
 # Backend (H2 in-memory, không cần cài DB)

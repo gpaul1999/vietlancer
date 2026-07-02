@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
+  const [suggested, setSuggested] = useState<Job[]>([]);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
 
@@ -22,6 +23,7 @@ export default function DashboardPage() {
     api.get<SubscriptionStatus>('/api/subscriptions/me').then(setSub).catch(() => {});
     if (user.role === 'FREELANCER') {
       api.get<Bid[]>('/api/bids/mine').then(setBids).catch(() => {});
+      api.get<Job[]>('/api/jobs/suggested').then(setSuggested).catch(() => {});
     }
   }, [user]);
 
@@ -40,9 +42,12 @@ export default function DashboardPage() {
             {sub?.premium && ` · Premium đến ${formatDate(sub.expiresAt)}`}
           </p>
         </div>
-        {user.role === 'CLIENT' && (
-          <Link href="/post-job" className="btn-primary">+ Đăng việc mới</Link>
-        )}
+        <div className="flex gap-2">
+          <Link href="/settings" className="btn-secondary">Sửa hồ sơ</Link>
+          {user.role === 'CLIENT' && (
+            <Link href="/post-job" className="btn-primary">+ Đăng việc mới</Link>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -63,6 +68,25 @@ export default function DashboardPage() {
           <div className="mt-1 text-2xl font-bold">{jobs.length}</div>
         </div>
       </div>
+
+      {/* AI job suggestions for freelancers */}
+      {user.role === 'FREELANCER' && suggested.length > 0 && (
+        <section>
+          <h2 className="mb-1 text-xl font-bold">🤖 Gợi ý cho bạn</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            AI phân tích kỹ năng trong hồ sơ của bạn và tìm các job đang mở phù hợp nhất.
+          </p>
+          <div className="space-y-4">
+            {suggested.map((j) => <JobCard key={j.id} job={j} />)}
+          </div>
+        </section>
+      )}
+      {user.role === 'FREELANCER' && suggested.length === 0 && (
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
+          💡 Thêm kỹ năng vào <Link href="/settings" className="font-semibold underline">hồ sơ</Link> để AI
+          gợi ý job phù hợp cho bạn.
+        </p>
+      )}
 
       {/* Jobs */}
       <section>

@@ -5,6 +5,45 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-07-02 — Session 2: Hoàn thiện MVP (notifications, directory, AI suggestions, rate limit, tests)
+
+### Đã implement
+- **Notifications in-app** (`notification/`): entity + service + controller.
+  - Hooks: NEW_BID (client), BID_ACCEPTED/BID_REJECTED (freelancer), JOB_COMPLETED, NEW_MESSAGE, NEW_REVIEW.
+  - `NotificationService.notify` = non-critical: `REQUIRES_NEW` + try/catch (không bao giờ hỏng nghiệp vụ chính).
+  - Chống spam: 1 thông báo CHƯA ĐỌC / (type + link) — tin nhắn dồn vào 1 notif/hội thoại.
+  - API: `GET /api/notifications`, `/unread-count`, `POST /{id}/read`, `/read-all`.
+- **Danh bạ freelancer**: `GET /api/users/freelancers?q=` (tìm theo tên/skills/bio, Premium xếp trước,
+  kèm rating avg/count). Lưu ý: literal path `/freelancers` được Spring ưu tiên hơn `/{id}`.
+- **AI gợi ý job cho freelancer**: `GET /api/jobs/suggested` — chạy classifier trên skills+bio
+  → suy topic sở trường → job OPEN thuộc topic đó, loại job đã bid, top 6. (Tái dùng classifier, zero cost.)
+- **Rate limiting** (`config/RateLimitFilter`, HIGHEST_PRECEDENCE): fixed window 1 phút theo IP.
+  `/api/auth/**` 20 req/phút (chống brute-force), `/api/**` 300 req/phút. In-memory —
+  khi scale ngang phải chuyển Redis (đã ghi PLAN.md).
+- **Tests** (10, đều xanh): `LocalHybridClassifierTest` (multi-label, có dấu/không dấu, fallback other,
+  title weight > description) + `MarketplaceFlowIntegrationTest` (@SpringBootTest, H2 mem:
+  full flow đăng job→bid→chặn chat→accept escrow→chat→complete 90%→notification; thiếu tiền không accept được;
+  không bid trùng; suggested jobs khớp skill).
+- **Frontend**: `NotificationBell` (badge unread, poll 20s, dropdown, mark read), `/freelancers`,
+  `/settings` (sửa hồ sơ — skills nuôi AI gợi ý), dashboard thêm section "🤖 Gợi ý cho bạn" + CTA thêm skills.
+
+### Quyết định kiến trúc (user hỏi về microservice)
+**Modular monolith có chủ đích, chưa tách microservice.** Lý do: escrow cần ACID một transaction;
+package-per-domain đã là ranh giới tách sẵn; chi phí vận hành chưa được trả lại. Lộ trình tách
+(ai-classifier → notification → chat → wallet) + tín hiệu kích hoạt ghi trong PLAN.md mục 5.
+
+### Đã kiểm chứng (e2e script scratchpad)
+Search 'react' ra freelancer; suggested trả đúng job web cho freelancer skills React/Spring;
+bid → client unread=1 → mark read =0; spam login sai → 429 sau ~19 request.
+
+### Checklist pre-production (cập nhật)
+- [x] Unit/integration tests cơ bản
+- [x] Rate limiting (in-memory; Redis khi scale ngang)
+- [ ] Đổi `APP_JWT_SECRET` production; review CORS
+- [ ] WebSocket chat, upload file, VNPay/MoMo, admin dashboard (Phase 2 — xem PLAN.md mục 6)
+
+---
+
 ## 2026-07-02 — Session 1: Khởi tạo dự án, MVP hoàn chỉnh
 
 **Commit**: `56a839d` trên branch `claude/vlancer-ai-topic-analysis-jjzr6u` (89 files). PR: chưa tạo.

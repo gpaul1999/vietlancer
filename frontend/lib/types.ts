@@ -122,6 +122,34 @@ export interface WalletTransaction {
   createdAt: string;
 }
 
+export interface Notification {
+  id: number;
+  type: 'NEW_BID' | 'BID_ACCEPTED' | 'BID_REJECTED' | 'JOB_COMPLETED' | 'NEW_MESSAGE' | 'NEW_REVIEW';
+  message: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface FreelancerCard {
+  id: number;
+  fullName: string;
+  bio?: string;
+  skills: string[];
+  hourlyRate?: number;
+  avatarUrl?: string;
+  premium: boolean;
+  ratingAvg: number | null;
+  ratingCount: number;
+}
+
+export interface FreelancerSearchResult {
+  freelancers: FreelancerCard[];
+  page: number;
+  totalPages: number;
+  totalElements: number;
+}
+
 export interface SubscriptionStatus {
   premium: boolean;
   plan?: string;

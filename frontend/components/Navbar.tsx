@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import NotificationBell from './NotificationBell';
 
 const navLinks = [
   { href: '/jobs', label: 'Tìm việc' },
+  { href: '/freelancers', label: 'Freelancer' },
   { href: '/post-job', label: 'Đăng việc' },
   { href: '/pricing', label: 'Premium' },
 ];
@@ -38,6 +40,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           {loading ? null : user ? (
             <>
+              <NotificationBell />
               <Link href="/messages" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
                 Tin nhắn
               </Link>
