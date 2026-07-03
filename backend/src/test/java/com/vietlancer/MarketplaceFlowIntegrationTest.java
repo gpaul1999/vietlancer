@@ -76,7 +76,7 @@ class MarketplaceFlowIntegrationTest {
                 .isInstanceOf(ApiException.class);
 
         // 4. Accept bid → tiền vào escrow, job IN_PROGRESS, freelancer nhận thông báo
-        bidService.accept(client, bid.getId());
+        bidService.accept(client, bid.getId(), false);
         var clientWallet = walletService.getOrCreate(client);
         assertThat(clientWallet.getBalance()).isEqualByComparingTo("4000000");
         assertThat(clientWallet.getEscrowBalance()).isEqualByComparingTo("6000000");
@@ -107,7 +107,7 @@ class MarketplaceFlowIntegrationTest {
         var bid = bidService.place(freelancer, job.id(),
                 new BidService.PlaceBidRequest(new BigDecimal("2000000"), 7, "Nhận ạ"));
 
-        assertThatThrownBy(() -> bidService.accept(client, bid.getId()))
+        assertThatThrownBy(() -> bidService.accept(client, bid.getId(), false))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("Số dư ví không đủ");
     }

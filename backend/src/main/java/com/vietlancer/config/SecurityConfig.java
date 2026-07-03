@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(h -> h.frameOptions(f -> f.sameOrigin())) // cho H2 console
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/topics/**", "/api/jobs/**", "/api/users/**").permitAll()

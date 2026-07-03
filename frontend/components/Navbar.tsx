@@ -40,6 +40,11 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           {loading ? null : user ? (
             <>
+              {user.role === 'ADMIN' && (
+                <Link href="/admin/disputes" className="rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50">
+                  ⚖️ Phân xử
+                </Link>
+              )}
               <NotificationBell />
               <Link href="/messages" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
                 Tin nhắn

@@ -7,6 +7,8 @@ import { useAuth } from '@/lib/auth-context';
 import type { Bid, Job } from '@/lib/types';
 import { formatVnd, formatDate, timeAgo } from '@/lib/format';
 import TopicBadge from '@/components/TopicBadge';
+import MilestonePanel from '@/components/MilestonePanel';
+import DisputePanel from '@/components/DisputePanel';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,8 @@ export default function JobDetailPage() {
   const [bidForm, setBidForm] = useState({ amount: '', deliveryDays: '', coverLetter: '' });
   const [review, setReview] = useState({ rating: 5, comment: '' });
   const [busy, setBusy] = useState(false);
+  const [hasOpenDispute, setHasOpenDispute] = useState(false);
+  const [acceptingBid, setAcceptingBid] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -117,10 +121,10 @@ export default function JobDetailPage() {
         {/* Owner actions */}
         {isOwner && job.status === 'IN_PROGRESS' && (
           <div className="mt-4 flex gap-2">
-            <button className="btn-primary" disabled={busy} onClick={() => act(() => api.post(`/api/jobs/${job.id}/complete`), 'Đã hoàn thành job và giải ngân cho freelancer!')}>
-              ✅ Xác nhận hoàn thành & giải ngân
+            <button className="btn-primary" disabled={busy || hasOpenDispute} onClick={() => act(() => api.post(`/api/jobs/${job.id}/complete`), 'Đã hoàn thành job!')}>
+              ✅ Xác nhận hoàn thành{job.milestoneBased ? '' : ' & giải ngân'}
             </button>
-            <button className="btn-secondary" disabled={busy} onClick={() => act(() => api.post(`/api/jobs/${job.id}/cancel`), 'Đã hủy job, escrow được hoàn lại.')}>
+            <button className="btn-secondary" disabled={busy || hasOpenDispute} onClick={() => act(() => api.post(`/api/jobs/${job.id}/cancel`), 'Đã hủy job, escrow được hoàn lại.')}>
               Hủy job
             </button>
           </div>
@@ -139,6 +143,26 @@ export default function JobDetailPage() {
 
       {notice && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
       {error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-600">{error}</p>}
+
+      {/* Dispute banner + form */}
+      <DisputePanel
+        jobId={job.id}
+        isParticipant={Boolean(isOwner || isAssigned)}
+        jobInProgress={job.status === 'IN_PROGRESS'}
+        currentUserId={user?.id}
+        onChanged={setHasOpenDispute}
+      />
+
+      {/* Milestone panel */}
+      {job.milestoneBased && (isOwner || isAssigned) && (
+        <MilestonePanel
+          job={job}
+          isOwner={Boolean(isOwner)}
+          isAssigned={Boolean(isAssigned)}
+          frozen={hasOpenDispute || job.status !== 'IN_PROGRESS'}
+          onChanged={load}
+        />
+      )}
 
       {/* Review form for completed jobs */}
       {job.status === 'COMPLETED' && (isOwner || isAssigned) && (
@@ -224,13 +248,9 @@ export default function JobDetailPage() {
                   <p className="mt-1 text-xs text-slate-500">Kỹ năng: {bid.freelancer.skills}</p>
                 )}
                 <p className="mt-2 text-sm text-slate-700">{bid.coverLetter}</p>
-                <div className="mt-3 flex gap-2">
-                  {job.status === 'OPEN' && bid.status === 'PENDING' && (
-                    <button
-                      className="btn-primary !py-1.5 text-sm"
-                      disabled={busy}
-                      onClick={() => act(() => api.post(`/api/bids/${bid.id}/accept`), 'Đã chọn freelancer! Tiền được giữ trong escrow và hội thoại đã mở.')}
-                    >
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {job.status === 'OPEN' && bid.status === 'PENDING' && acceptingBid !== bid.id && (
+                    <button className="btn-primary !py-1.5 text-sm" disabled={busy} onClick={() => setAcceptingBid(bid.id)}>
                       Chọn freelancer này
                     </button>
                   )}
@@ -239,6 +259,36 @@ export default function JobDetailPage() {
                   </button>
                   <span className="self-center text-xs font-semibold text-slate-400">{bid.status}</span>
                 </div>
+                {acceptingBid === bid.id && (
+                  <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
+                    <p className="text-sm font-semibold">Chọn hình thức thanh toán:</p>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      <button
+                        className="rounded-xl border border-slate-300 bg-white p-3 text-left transition hover:border-brand-500 disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => act(() => api.post(`/api/bids/${bid.id}/accept`, { useMilestones: false }), 'Đã chọn freelancer! Toàn bộ tiền được giữ trong escrow.').then(() => setAcceptingBid(null))}
+                      >
+                        <div className="font-semibold">🔒 Escrow toàn bộ</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          Giữ ngay {formatVnd(bid.amount)} vào escrow. Giải ngân một lần khi hoàn thành.
+                        </div>
+                      </button>
+                      <button
+                        className="rounded-xl border border-slate-300 bg-white p-3 text-left transition hover:border-brand-500 disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => act(() => api.post(`/api/bids/${bid.id}/accept`, { useMilestones: true }), 'Đã chọn freelancer! Hãy tạo các mốc công việc và nạp escrow từng mốc.').then(() => setAcceptingBid(null))}
+                      >
+                        <div className="font-semibold">📋 Theo milestone</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          Chia job thành các mốc, nạp và giải ngân từng mốc. Không khóa toàn bộ vốn.
+                        </div>
+                      </button>
+                    </div>
+                    <button className="mt-2 text-xs text-slate-400 hover:underline" onClick={() => setAcceptingBid(null)}>
+                      Bỏ qua
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

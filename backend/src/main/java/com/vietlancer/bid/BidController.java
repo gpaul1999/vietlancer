@@ -81,9 +81,14 @@ public class BidController {
                 .toList();
     }
 
+    public record AcceptBody(boolean useMilestones) {}
+
     @PostMapping("/bids/{id}/accept")
-    public BidDto accept(@AuthenticationPrincipal User user, @PathVariable Long id) {
-        return toDto(bidService.accept(user, id));
+    public BidDto accept(
+            @AuthenticationPrincipal User user, @PathVariable Long id,
+            @RequestBody(required = false) AcceptBody body) {
+        var useMilestones = body != null && body.useMilestones();
+        return toDto(bidService.accept(user, id, useMilestones));
     }
 
     private BidDto toDto(Bid bid) {

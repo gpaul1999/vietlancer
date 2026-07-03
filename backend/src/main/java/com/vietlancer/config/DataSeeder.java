@@ -72,6 +72,12 @@ public class DataSeeder implements CommandLineRunner {
         if (userRepository.count() > 0) {
             return;
         }
+        userRepository.save(User.builder()
+                .email("admin@vietlancer.vn")
+                .password(passwordEncoder.encode("password123"))
+                .fullName("Quản trị viên")
+                .role(Role.ADMIN)
+                .build());
         var client = userRepository.save(User.builder()
                 .email("client@demo.vn")
                 .password(passwordEncoder.encode("password123"))

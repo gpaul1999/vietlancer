@@ -29,12 +29,17 @@ import lombok.Setter;
 public class Notification {
 
     public enum Type {
-        NEW_BID,        // Client: có chào giá mới
-        BID_ACCEPTED,   // Freelancer: bid được chọn
-        BID_REJECTED,   // Freelancer: bid bị từ chối
-        JOB_COMPLETED,  // Freelancer: job hoàn thành, đã nhận tiền
-        NEW_MESSAGE,    // Có tin nhắn mới
-        NEW_REVIEW      // Nhận được đánh giá mới
+        NEW_BID,             // Client: có chào giá mới
+        BID_ACCEPTED,        // Freelancer: bid được chọn
+        BID_REJECTED,        // Freelancer: bid bị từ chối
+        JOB_COMPLETED,       // Freelancer: job hoàn thành, đã nhận tiền
+        NEW_MESSAGE,         // Có tin nhắn mới
+        NEW_REVIEW,          // Nhận được đánh giá mới
+        MILESTONE_FUNDED,    // Freelancer: milestone đã được nạp tiền escrow
+        MILESTONE_SUBMITTED, // Client: freelancer báo hoàn thành milestone
+        MILESTONE_RELEASED,  // Freelancer: milestone được giải ngân
+        DISPUTE_OPENED,      // Bên còn lại: có khiếu nại
+        DISPUTE_RESOLVED     // Cả hai bên: khiếu nại đã được phân xử
     }
 
     @Id

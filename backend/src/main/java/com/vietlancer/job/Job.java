@@ -83,9 +83,17 @@ public class Job {
     @ManyToOne(fetch = FetchType.LAZY)
     private User assignedFreelancer;
 
-    /** Giá trị bid được chấp nhận — số tiền giữ trong escrow. */
+    /** Giá trị bid được chấp nhận — số tiền giữ trong escrow (chế độ escrow toàn phần). */
     @Column(precision = 15, scale = 0)
     private BigDecimal escrowAmount;
+
+    /**
+     * true = thanh toán theo milestone: không giữ toàn bộ tiền khi accept bid,
+     * client nạp escrow và giải ngân theo từng mốc công việc.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean milestoneBased = false;
 
     @Builder.Default
     @Column(nullable = false)

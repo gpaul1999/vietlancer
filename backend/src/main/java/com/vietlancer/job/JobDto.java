@@ -19,6 +19,7 @@ public record JobDto(
         ClientRef client,
         Long assignedFreelancerId,
         BigDecimal escrowAmount,
+        boolean milestoneBased,
         long bidCount,
         Instant createdAt) {
 
@@ -47,6 +48,7 @@ public record JobDto(
                         clientPremium),
                 job.getAssignedFreelancer() == null ? null : job.getAssignedFreelancer().getId(),
                 job.getEscrowAmount(),
+                job.isMilestoneBased(),
                 bidCount,
                 job.getCreatedAt());
     }

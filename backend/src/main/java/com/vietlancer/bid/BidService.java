@@ -64,11 +64,13 @@ public class BidService {
     }
 
     /**
-     * Client chấp nhận bid: giữ tiền vào escrow, gán freelancer cho job,
-     * từ chối các bid còn lại và mở hội thoại giữa hai bên.
+     * Client chấp nhận bid: gán freelancer, từ chối bid còn lại, mở hội thoại.
+     * - Chế độ escrow toàn phần (mặc định): giữ toàn bộ giá bid vào escrow ngay.
+     * - Chế độ milestone (useMilestones=true): KHÔNG giữ tiền ngay — client tạo
+     *   các mốc công việc và nạp escrow theo từng mốc (giảm khóa vốn, giảm rủi ro 2 bên).
      */
     @Transactional
-    public Bid accept(User client, Long bidId) {
+    public Bid accept(User client, Long bidId, boolean useMilestones) {
         var bid = bidRepository.findById(bidId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy bid"));
         var job = bid.getJob();
@@ -79,8 +81,10 @@ public class BidService {
             throw ApiException.badRequest("Job không ở trạng thái nhận bid");
         }
 
-        walletService.holdEscrow(client, bid.getAmount(),
-                "Escrow cho job #%d: %s".formatted(job.getId(), job.getTitle()));
+        if (!useMilestones) {
+            walletService.holdEscrow(client, bid.getAmount(),
+                    "Escrow cho job #%d: %s".formatted(job.getId(), job.getTitle()));
+        }
 
         bid.setStatus(Bid.Status.ACCEPTED);
         bidRepository.findByJobIdAndStatus(job.getId(), Bid.Status.PENDING).stream()
@@ -94,13 +98,17 @@ public class BidService {
 
         job.setStatus(Job.Status.IN_PROGRESS);
         job.setAssignedFreelancer(bid.getFreelancer());
-        job.setEscrowAmount(bid.getAmount());
+        job.setMilestoneBased(useMilestones);
+        job.setEscrowAmount(useMilestones ? null : bid.getAmount());
         jobRepository.save(job);
 
         chatService.openForAcceptedBid(job, bid.getFreelancer());
-        notificationService.notify(bid.getFreelancer(), Notification.Type.BID_ACCEPTED,
-                "🎉 Bạn được chọn cho \"%s\"! Tiền đã vào escrow, bắt đầu làm việc thôi."
-                        .formatted(job.getTitle()),
+        var message = useMilestones
+                ? "🎉 Bạn được chọn cho \"%s\"! Job thanh toán theo milestone — chờ client tạo và nạp mốc đầu tiên."
+                        .formatted(job.getTitle())
+                : "🎉 Bạn được chọn cho \"%s\"! Tiền đã vào escrow, bắt đầu làm việc thôi."
+                        .formatted(job.getTitle());
+        notificationService.notify(bid.getFreelancer(), Notification.Type.BID_ACCEPTED, message,
                 "/jobs/" + job.getId());
         return bidRepository.save(bid);
     }

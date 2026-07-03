@@ -44,6 +44,7 @@ public class SubscriptionService {
         var pp = switch (user.getRole()) {
             case CLIENT -> new PlanPrice(Subscription.Plan.CLIENT_PREMIUM, clientPremiumPrice);
             case FREELANCER -> new PlanPrice(Subscription.Plan.FREELANCER_PREMIUM, freelancerPremiumPrice);
+            case ADMIN -> throw ApiException.badRequest("Tài khoản quản trị không cần gói Premium");
         };
 
         walletService.charge(user, pp.price(), WalletTransaction.Type.SUBSCRIPTION,
@@ -68,6 +69,7 @@ public class SubscriptionService {
         return switch (role) {
             case CLIENT -> clientPremiumPrice;
             case FREELANCER -> freelancerPremiumPrice;
+            case ADMIN -> BigDecimal.ZERO;
         };
     }
 

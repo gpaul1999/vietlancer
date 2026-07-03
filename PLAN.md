@@ -111,8 +111,8 @@ rate limiting, tests (unit + integration).
 | WebSocket chat real-time + typing indicator | Thay polling 5s hiện tại | Có (cơ bản) |
 | Upload file: avatar, portfolio, đính kèm job/chat | S3-compatible storage | Có |
 | Cổng thanh toán VNPay/MoMo/ZaloPay | Thay deposit mô phỏng | Có |
-| **Thanh toán theo milestone** | Chia job lớn thành mốc, escrow từng mốc — giảm rủi ro 2 bên | Không rõ → **lợi thế** |
-| **Trung tâm giải quyết tranh chấp** | Khiếu nại, admin phân xử escrow — xây niềm tin | Yếu → **lợi thế** |
+| ✅ **Thanh toán theo milestone** (XONG) | Chia job thành mốc, nạp/giải ngân escrow từng mốc — giảm rủi ro 2 bên | Không rõ → **lợi thế** |
+| ✅ **Trung tâm giải quyết tranh chấp** (XONG) | Khiếu nại đóng băng job, admin chia escrow linh hoạt | Yếu → **lợi thế** |
 | Email notification + job alert theo topic đã lưu | Digest hằng ngày | Có |
 | Lưu job yêu thích, lịch sử xem | | Có |
 | Admin dashboard: duyệt user, gỡ job xấu, thống kê | | — |

@@ -1,4 +1,4 @@
-export type Role = 'CLIENT' | 'FREELANCER';
+export type Role = 'CLIENT' | 'FREELANCER' | 'ADMIN';
 
 export interface User {
   id: number;
@@ -36,8 +36,38 @@ export interface Job {
   client: { id: number; fullName: string; avatarUrl?: string; premium: boolean };
   assignedFreelancerId?: number;
   escrowAmount?: number;
+  milestoneBased: boolean;
   bidCount: number;
   createdAt: string;
+}
+
+export type MilestoneStatus = 'PENDING' | 'FUNDED' | 'SUBMITTED' | 'RELEASED' | 'CANCELLED';
+
+export interface Milestone {
+  id: number;
+  jobId: number;
+  title: string;
+  amount: number;
+  dueDate?: string;
+  status: MilestoneStatus;
+  createdAt: string;
+}
+
+export type DisputeStatus = 'OPEN' | 'RESOLVED' | 'WITHDRAWN';
+
+export interface Dispute {
+  id: number;
+  jobId: number;
+  jobTitle: string;
+  raisedById: number;
+  raisedByName: string;
+  reason: string;
+  status: DisputeStatus;
+  heldAmount: number;
+  amountToFreelancer?: number;
+  resolutionNote?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface JobSearchResult {

@@ -39,6 +39,11 @@ dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchai
      (REQUIRES_NEW + try/catch + chống spam theo type+link) — không được ném lỗi vào nghiệp vụ chính.
   6. Rate limit: `RateLimitFilter` (auth 20 req/phút/IP, api 300 req/phút/IP) — in-memory,
      chuyển Redis khi chạy nhiều instance.
+  7. Milestone: accept bid với `useMilestones=true` → KHÔNG hold toàn bộ; escrow được nạp/giải ngân
+     theo từng mốc (`MilestoneService`). Job chỉ complete được khi không còn mốc đang giữ tiền.
+  8. Dispute: khi job có khiếu nại OPEN → mọi thao tác tiền/trạng thái bị đóng băng
+     (`DisputeGuard.requireNoOpenDispute` — phải gọi trong mọi mutation mới đụng đến escrow).
+     Chỉ ADMIN phân xử (`/api/admin/**`); role ADMIN không thể tự đăng ký, chỉ seed.
 
 ---
 

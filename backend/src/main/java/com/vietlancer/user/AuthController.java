@@ -37,6 +37,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
+        if (request.role() == Role.ADMIN) {
+            throw ApiException.badRequest("Không thể tự đăng ký tài khoản quản trị");
+        }
         if (userRepository.existsByEmail(request.email())) {
             throw ApiException.conflict("Email đã được sử dụng");
         }

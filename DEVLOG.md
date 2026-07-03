@@ -5,6 +5,53 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-07-02 — Session 3: Milestone payments + Dispute center (2 lợi thế cạnh tranh vs vLancer)
+
+Chủ dự án giao Claude tự chọn hướng cạnh tranh tốt nhất → chọn 2 tính năng vLancer yếu
+(theo phân tích PLAN.md mục 6) thay vì WebSocket chat (chỉ là tính năng ngang bằng).
+
+### Milestone payments (`milestone/`)
+- Accept bid có 2 chế độ (`POST /api/bids/{id}/accept` body `{useMilestones}`):
+  - `false` (mặc định): giữ toàn bộ giá bid vào escrow như cũ — flow cũ KHÔNG đổi.
+  - `true`: không giữ tiền ngay; `job.milestoneBased=true`, `escrowAmount=null`.
+- Vòng đời mốc: PENDING → (client fund, hold escrow đúng số tiền mốc) FUNDED →
+  (freelancer submit) SUBMITTED → (client release, trừ phí 10%) RELEASED. Hủy được khi PENDING.
+- `JobService.complete` (milestone): chặn nếu còn mốc FUNDED/SUBMITTED; mốc PENDING tự hủy.
+- `JobService.cancel` (milestone): hoàn escrow từng mốc đang giữ.
+- API: `POST /api/jobs/{id}/milestones`, `GET .../milestones` (participants + admin),
+  `POST /api/milestones/{id}/fund|submit|release|cancel`.
+
+### Dispute center (`dispute/`)
+- Role **ADMIN** mới: không thể tự đăng ký (guard trong AuthController), seed `admin@vietlancer.vn`
+  / password123. `/api/admin/**` → `hasRole("ADMIN")` trong SecurityConfig.
+- Client/freelancer của job IN_PROGRESS mở khiếu nại (1 OPEN/job). `heldAmount` chốt tại thời điểm mở
+  (escrow toàn phần hoặc tổng mốc FUNDED+SUBMITTED).
+- **`DisputeGuard.requireNoOpenDispute(jobId)`** — chốt chặn dùng chung, PHẢI gọi trong mọi mutation
+  đụng escrow: hiện có complete, cancel, milestone fund/submit/release.
+- Admin resolve: nhập `amountToFreelancer` (0..held) → release cho freelancer (trừ phí),
+  hoàn phần còn lại cho client; job → COMPLETED (nếu >0) / CANCELLED (nếu =0); mốc đang giữ → CANCELLED.
+- Người mở được withdraw → job hoạt động lại.
+- API: `POST /api/jobs/{id}/disputes`, `GET .../disputes`, `GET /api/disputes/mine`,
+  `POST /api/disputes/{id}/withdraw`; admin: `GET /api/admin/disputes?status=`, `POST .../{id}/resolve`.
+
+### Frontend
+- Job detail: chọn chế độ thanh toán khi accept (2 nút Escrow toàn bộ / Theo milestone),
+  `MilestonePanel` (fund/submit/release/cancel + progress giải ngân), `DisputePanel`
+  (banner đóng băng + form khiếu nại + kết quả phân xử). `/admin/disputes` cho ADMIN
+  (link ⚖️ trên navbar). Notification types mới: MILESTONE_*, DISPUTE_*.
+
+### Kiểm chứng
+- 14 tests xanh (thêm `MilestoneAndDisputeIntegrationTest`: fund→submit→release đúng số dư,
+  cancel hoàn mốc, dispute đóng băng + admin chia 4tr/6tr, withdraw mở khóa lại).
+- E2E script: accept milestone không khóa vốn, complete/release trả 409 khi có khiếu nại,
+  admin resolve đúng số dư 2 ví, client thường gọi API admin → 403.
+
+### Lưu ý cho session sau
+- `Role.ADMIN` làm switch role phải có nhánh ADMIN (JobService.mine, SubscriptionService).
+- Đổi mật khẩu admin seed trước khi lên production.
+
+---
+
 ## 2026-07-02 — Session 2: Hoàn thiện MVP (notifications, directory, AI suggestions, rate limit, tests)
 
 ### Đã implement

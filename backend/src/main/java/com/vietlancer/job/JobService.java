@@ -3,6 +3,9 @@ package com.vietlancer.job;
 import com.vietlancer.ai.TopicClassifier;
 import com.vietlancer.bid.BidRepository;
 import com.vietlancer.common.ApiException;
+import com.vietlancer.dispute.DisputeGuard;
+import com.vietlancer.milestone.Milestone;
+import com.vietlancer.milestone.MilestoneRepository;
 import com.vietlancer.notification.Notification;
 import com.vietlancer.notification.NotificationService;
 import com.vietlancer.subscription.SubscriptionService;
@@ -33,6 +36,8 @@ public class JobService {
     private final SubscriptionService subscriptionService;
     private final WalletService walletService;
     private final NotificationService notificationService;
+    private final DisputeGuard disputeGuard;
+    private final MilestoneRepository milestoneRepository;
 
     @Value("${app.platform.fee-percent}")
     private int feePercent;
@@ -98,6 +103,7 @@ public class JobService {
         var jobs = switch (user.getRole()) {
             case CLIENT -> jobRepository.findByClientIdOrderByCreatedAtDesc(user.getId());
             case FREELANCER -> jobRepository.findByAssignedFreelancerIdOrderByCreatedAtDesc(user.getId());
+            case ADMIN -> jobRepository.findAll();
         };
         return jobs.stream().map(this::toDto).toList();
     }
@@ -129,7 +135,12 @@ public class JobService {
                 .toList();
     }
 
-    /** Client xác nhận hoàn thành → giải ngân escrow cho freelancer (trừ phí nền tảng). */
+    /**
+     * Client xác nhận hoàn thành.
+     * - Escrow toàn phần: giải ngân toàn bộ cho freelancer (trừ phí nền tảng).
+     * - Milestone: các mốc đã giải ngân riêng — chỉ cần không còn mốc đang giữ tiền;
+     *   mốc PENDING chưa nạp sẽ được hủy.
+     */
     @Transactional
     public JobDto complete(User client, Long jobId) {
         var job = find(jobId);
@@ -137,8 +148,23 @@ public class JobService {
         if (job.getStatus() != Job.Status.IN_PROGRESS) {
             throw ApiException.badRequest("Chỉ job đang thực hiện mới có thể hoàn thành");
         }
-        walletService.releaseEscrow(job.getClient(), job.getAssignedFreelancer(), job.getEscrowAmount(),
-                feePercent, "Thanh toán job #%d: %s".formatted(job.getId(), job.getTitle()));
+        disputeGuard.requireNoOpenDispute(job.getId());
+
+        if (job.isMilestoneBased()) {
+            if (milestoneRepository.existsByJobIdAndStatusIn(job.getId(), MilestoneRepository.HELD_STATUSES)) {
+                throw ApiException.badRequest(
+                        "Còn milestone đang giữ tiền — hãy giải ngân hoặc xử lý các mốc đó trước");
+            }
+            milestoneRepository
+                    .findByJobIdAndStatusIn(job.getId(), List.of(Milestone.Status.PENDING))
+                    .forEach(m -> {
+                        m.setStatus(Milestone.Status.CANCELLED);
+                        milestoneRepository.save(m);
+                    });
+        } else {
+            walletService.releaseEscrow(job.getClient(), job.getAssignedFreelancer(), job.getEscrowAmount(),
+                    feePercent, "Thanh toán job #%d: %s".formatted(job.getId(), job.getTitle()));
+        }
         job.setStatus(Job.Status.COMPLETED);
         notificationService.notify(job.getAssignedFreelancer(), Notification.Type.JOB_COMPLETED,
                 "Job \"%s\" đã hoàn thành — tiền đã về ví của bạn. Đừng quên đánh giá client!"
@@ -147,7 +173,7 @@ public class JobService {
         return toDto(jobRepository.save(job));
     }
 
-    /** Hủy job. Nếu đang thực hiện thì hoàn escrow về ví client. */
+    /** Hủy job. Nếu đang thực hiện thì hoàn toàn bộ escrow đang giữ về ví client. */
     @Transactional
     public JobDto cancel(User client, Long jobId) {
         var job = find(jobId);
@@ -155,8 +181,25 @@ public class JobService {
         switch (job.getStatus()) {
             case OPEN -> job.setStatus(Job.Status.CANCELLED);
             case IN_PROGRESS -> {
-                walletService.refundEscrow(job.getClient(), job.getEscrowAmount(),
-                        "Hoàn escrow do hủy job #%d".formatted(job.getId()));
+                disputeGuard.requireNoOpenDispute(job.getId());
+                if (job.isMilestoneBased()) {
+                    // Hoàn từng mốc đang giữ tiền, hủy mọi mốc chưa giải ngân
+                    milestoneRepository
+                            .findByJobIdAndStatusIn(job.getId(), List.of(
+                                    Milestone.Status.PENDING, Milestone.Status.FUNDED, Milestone.Status.SUBMITTED))
+                            .forEach(m -> {
+                                if (m.getStatus() != Milestone.Status.PENDING) {
+                                    walletService.refundEscrow(job.getClient(), m.getAmount(),
+                                            "Hoàn escrow mốc \"%s\" do hủy job #%d"
+                                                    .formatted(m.getTitle(), job.getId()));
+                                }
+                                m.setStatus(Milestone.Status.CANCELLED);
+                                milestoneRepository.save(m);
+                            });
+                } else {
+                    walletService.refundEscrow(job.getClient(), job.getEscrowAmount(),
+                            "Hoàn escrow do hủy job #%d".formatted(job.getId()));
+                }
                 job.setStatus(Job.Status.CANCELLED);
             }
             case COMPLETED, CANCELLED ->
