@@ -43,4 +43,8 @@ public class Wallet {
     @Builder.Default
     @Column(nullable = false, precision = 15, scale = 0)
     private BigDecimal escrowBalance = BigDecimal.ZERO;
+
+    /** Optimistic locking: chặn lost update khi 2 giao dịch cùng sửa số dư. */
+    @jakarta.persistence.Version
+    private long version;
 }

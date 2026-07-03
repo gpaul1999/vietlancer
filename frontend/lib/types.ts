@@ -2,7 +2,8 @@ export type Role = 'CLIENT' | 'FREELANCER' | 'ADMIN';
 
 export interface User {
   id: number;
-  email: string;
+  /** Chỉ có khi xem hồ sơ của chính mình (/auth/me) — hồ sơ public không trả email. */
+  email?: string;
   fullName: string;
   role: Role;
   bio?: string;

@@ -13,6 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
+    /** Premium xếp trước ngay trong ORDER BY — đúng trên mọi trang. */
     @Query("""
             select u from User u
             where u.role = :role
@@ -20,6 +21,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    or lower(u.fullName) like lower(concat('%', :q, '%'))
                    or lower(u.skills) like lower(concat('%', :q, '%'))
                    or lower(u.bio) like lower(concat('%', :q, '%')))
+            order by case when exists (
+                       select 1 from Subscription s
+                       where s.user.id = u.id and s.expiresAt > :now)
+                     then 0 else 1 end,
+                     u.createdAt desc
             """)
-    Page<User> searchByRole(@Param("role") Role role, @Param("q") String q, Pageable pageable);
+    Page<User> searchByRole(
+            @Param("role") Role role, @Param("q") String q,
+            @Param("now") java.time.Instant now, Pageable pageable);
 }

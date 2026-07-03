@@ -47,6 +47,13 @@ app:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:3000}
   storage:
     dir: ${APP_STORAGE_DIR:./uploads}
+  # Mật khẩu admin: dev có default để tiện demo; PRODUCTION BẮT BUỘC đặt APP_ADMIN_PASSWORD
+  admin:
+    password: ${APP_ADMIN_PASSWORD:password123}
+  seed-demo: ${APP_SEED_DEMO:true}
+  rate-limit:
+    # Chỉ bật khi đứng sau reverse proxy tin cậy có ghi đè X-Forwarded-For
+    trust-forwarded-header: ${APP_TRUST_FORWARDED_HEADER:false}
 
 ---
 spring:
@@ -61,3 +68,9 @@ spring:
   h2:
     console:
       enabled: false
+
+app:
+  # Production: không seed demo, admin password bắt buộc từ env (trống → không tạo admin)
+  seed-demo: ${APP_SEED_DEMO:false}
+  admin:
+    password: ${APP_ADMIN_PASSWORD:}

@@ -74,7 +74,8 @@ public class WalletService {
 
         var freelancerWallet = getOrCreate(freelancer);
         freelancerWallet.setBalance(freelancerWallet.getBalance().add(payout));
-        record(freelancerWallet, WalletTransaction.Type.PAYOUT, payout, note);
+        // Sổ cái phải khớp số dư: +amount (gross) rồi -fee → tổng = +payout = thay đổi balance
+        record(freelancerWallet, WalletTransaction.Type.PAYOUT, amount, note);
         record(freelancerWallet, WalletTransaction.Type.PLATFORM_FEE, fee.negate(),
                 "Phí nền tảng %d%% — %s".formatted(feePercent, note));
         walletRepository.save(freelancerWallet);

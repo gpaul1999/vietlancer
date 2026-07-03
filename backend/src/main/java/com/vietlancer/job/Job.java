@@ -98,4 +98,8 @@ public class Job {
     @Builder.Default
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    /** Optimistic locking: chặn 2 thao tác đồng thời (vd: accept 2 bid cùng lúc). */
+    @jakarta.persistence.Version
+    private long version;
 }

@@ -38,7 +38,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // /ws: handshake mở, xác thực JWT thật ở bước STOMP CONNECT (StompAuthInterceptor)
                         // /files: file đã upload là public-read (URL chứa UUID ngẫu nhiên)
-                        .requestMatchers("/api/auth/**", "/h2-console/**", "/ws/**", "/files/**").permitAll()
+                        // /error phải mở để error dispatch không bị biến thành 403 đánh lừa
+                        .requestMatchers("/api/auth/**", "/h2-console/**", "/ws/**", "/files/**", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/topics/**", "/api/jobs/**", "/api/users/**").permitAll()
                         .anyRequest().authenticated())

@@ -9,18 +9,30 @@ import org.springframework.data.repository.query.Param;
 
 public interface JobRepository extends JpaRepository<Job, Long> {
 
+    /**
+     * Ưu tiên Premium ngay trong ORDER BY của DB — đúng trên mọi trang,
+     * không sort lại trong bộ nhớ sau khi đã phân trang.
+     */
     @Query("""
-            select distinct j from Job j left join j.topics t
+            select j from Job j
             where j.status = :status
-              and (:topicSlug is null or t.slug = :topicSlug)
+              and (:topicSlug is null or exists (
+                   select 1 from Job j2 join j2.topics t
+                   where j2.id = j.id and t.slug = :topicSlug))
               and (:q is null
                    or lower(j.title) like lower(concat('%', :q, '%'))
                    or lower(j.description) like lower(concat('%', :q, '%')))
+            order by case when exists (
+                       select 1 from Subscription s
+                       where s.user.id = j.client.id and s.expiresAt > :now)
+                     then 0 else 1 end,
+                     j.createdAt desc
             """)
     Page<Job> search(
             @Param("status") Job.Status status,
             @Param("topicSlug") String topicSlug,
             @Param("q") String q,
+            @Param("now") java.time.Instant now,
             Pageable pageable);
 
     @Query("""

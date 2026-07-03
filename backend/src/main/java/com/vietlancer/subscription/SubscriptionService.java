@@ -36,6 +36,14 @@ public class SubscriptionService {
         return subscriptionRepository.existsByUserIdAndExpiresAtAfter(userId, Instant.now());
     }
 
+    /** Kiểm tra Premium theo lô (1 query cho cả danh sách) — dùng khi map DTO danh sách. */
+    public java.util.Set<Long> premiumUserIds(java.util.Collection<Long> userIds) {
+        if (userIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return java.util.Set.copyOf(subscriptionRepository.premiumUserIdsIn(userIds, Instant.now()));
+    }
+
     /** Mua/gia hạn gói premium tương ứng với role, trừ tiền từ ví. */
     @Transactional
     public Subscription subscribe(User user) {

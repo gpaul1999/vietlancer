@@ -14,14 +14,13 @@ import com.vietlancer.user.Role;
 import com.vietlancer.user.User;
 import com.vietlancer.wallet.WalletService;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,17 +79,12 @@ public class JobService {
 
     @Transactional(readOnly = true)
     public SearchResult search(String topicSlug, String q, int page, int size) {
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        // Sort nằm trong ORDER BY của query (Premium trước, mới nhất trước) — pageable không sort
+        var pageable = PageRequest.of(page, size);
         var normalizedQ = q == null || q.isBlank() ? null : q.trim();
         var normalizedTopic = topicSlug == null || topicSlug.isBlank() ? null : topicSlug.trim();
-        var result = jobRepository.search(Job.Status.OPEN, normalizedTopic, normalizedQ, pageable);
-
-        // Job của client Premium được ưu tiên hiển thị trước trong trang
-        var jobs = result.getContent().stream()
-                .map(this::toDto)
-                .sorted(Comparator.comparing(JobDto::client, Comparator.comparing(c -> !c.premium())))
-                .toList();
-        return new SearchResult(jobs, page, result.getTotalPages(), result.getTotalElements());
+        var result = jobRepository.search(Job.Status.OPEN, normalizedTopic, normalizedQ, Instant.now(), pageable);
+        return new SearchResult(toDtos(result.getContent()), page, result.getTotalPages(), result.getTotalElements());
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +99,7 @@ public class JobService {
             case FREELANCER -> jobRepository.findByAssignedFreelancerIdOrderByCreatedAtDesc(user.getId());
             case ADMIN -> jobRepository.findAll();
         };
-        return jobs.stream().map(this::toDto).toList();
+        return toDtos(jobs);
     }
 
     /**
@@ -128,11 +122,8 @@ public class JobService {
         if (slugs.isEmpty()) {
             return List.of();
         }
-        return jobRepository
-                .findOpenByTopicsExcludingBidder(Job.Status.OPEN, slugs, freelancer.getId(), PageRequest.of(0, 6))
-                .stream()
-                .map(this::toDto)
-                .toList();
+        return toDtos(jobRepository
+                .findOpenByTopicsExcludingBidder(Job.Status.OPEN, slugs, freelancer.getId(), PageRequest.of(0, 6)));
     }
 
     /**
@@ -224,5 +215,23 @@ public class JobService {
                 job,
                 bidRepository.countByJobId(job.getId()),
                 subscriptionService.isPremium(job.getClient().getId()));
+    }
+
+    /** Map danh sách job → DTO với đúng 2 query phụ (bidCount + premium theo lô), tránh N+1. */
+    List<JobDto> toDtos(List<Job> jobs) {
+        if (jobs.isEmpty()) {
+            return List.of();
+        }
+        var jobIds = jobs.stream().map(Job::getId).toList();
+        var bidCounts = bidRepository.countByJobIds(jobIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+        var clientIds = jobs.stream().map(j -> j.getClient().getId()).distinct().toList();
+        var premiumIds = subscriptionService.premiumUserIds(clientIds);
+        return jobs.stream()
+                .map(job -> JobDto.from(
+                        job,
+                        bidCounts.getOrDefault(job.getId(), 0L),
+                        premiumIds.contains(job.getClient().getId())))
+                .toList();
     }
 }

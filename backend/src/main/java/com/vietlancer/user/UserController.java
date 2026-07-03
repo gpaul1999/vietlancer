@@ -6,10 +6,11 @@ import com.vietlancer.subscription.SubscriptionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,27 +36,36 @@ public class UserController {
     public record FreelancerSearchResult(
             List<FreelancerCard> freelancers, int page, int totalPages, long totalElements) {}
 
-    /** Danh bạ freelancer: tìm theo tên / kỹ năng / bio. Premium hiển thị trước. */
+    /** Danh bạ freelancer: tìm theo tên / kỹ năng / bio. Premium xếp trước (ORDER BY trong DB). */
     @GetMapping("/freelancers")
     public FreelancerSearchResult freelancers(
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size) {
-        var pageable = PageRequest.of(page, Math.min(size, 50), Sort.by(Sort.Direction.DESC, "createdAt"));
+        var pageable = PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 50));
         var normalizedQ = q == null || q.isBlank() ? null : q.trim();
-        var result = userRepository.searchByRole(Role.FREELANCER, normalizedQ, pageable);
+        var result = userRepository.searchByRole(Role.FREELANCER, normalizedQ, Instant.now(), pageable);
+
+        // Batch 2 query cho cả trang (premium + rating) thay vì 3 query mỗi card
+        var userIds = result.getContent().stream().map(User::getId).toList();
+        var premiumIds = subscriptionService.premiumUserIds(userIds);
+        var ratings = reviewRepository.ratingSummaries(userIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> row));
+
         var cards = result.getContent().stream()
-                .map(u -> new FreelancerCard(
-                        u.getId(),
-                        u.getFullName(),
-                        u.getBio(),
-                        UserDto.from(u).skills(),
-                        u.getHourlyRate(),
-                        u.getAvatarUrl(),
-                        subscriptionService.isPremium(u.getId()),
-                        reviewRepository.averageRating(u.getId()),
-                        reviewRepository.countByRevieweeId(u.getId())))
-                .sorted((a, b) -> Boolean.compare(b.premium(), a.premium()))
+                .map(u -> {
+                    var rating = ratings.get(u.getId());
+                    return new FreelancerCard(
+                            u.getId(),
+                            u.getFullName(),
+                            u.getBio(),
+                            UserDto.skillsOf(u),
+                            u.getHourlyRate(),
+                            u.getAvatarUrl(),
+                            premiumIds.contains(u.getId()),
+                            rating == null ? null : (Double) rating[1],
+                            rating == null ? 0L : (Long) rating[2]);
+                })
                 .toList();
         return new FreelancerSearchResult(cards, page, result.getTotalPages(), result.getTotalElements());
     }
@@ -67,10 +77,11 @@ public class UserController {
             BigDecimal hourlyRate,
             String avatarUrl) {}
 
+    /** Hồ sơ công khai — không lộ email (endpoint mở cho khách vãng lai). */
     @GetMapping("/{id}")
-    public UserDto get(@PathVariable Long id) {
+    public PublicUserDto get(@PathVariable Long id) {
         return userRepository.findById(id)
-                .map(UserDto::from)
+                .map(PublicUserDto::from)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy người dùng"));
     }
 

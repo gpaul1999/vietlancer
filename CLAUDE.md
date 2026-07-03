@@ -36,7 +36,8 @@ dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchai
   3. Tiền đi qua escrow: accept bid → hold; complete → release trừ phí nền tảng; cancel → refund.
   4. Freelancer free tier: giới hạn bid/tháng (`app.platform.free-bids-per-month`); Premium không giới hạn.
   5. Thông báo là non-critical: mọi hook notify phải đi qua `NotificationService.notify`
-     (REQUIRES_NEW + try/catch + chống spam theo type+link) — không được ném lỗi vào nghiệp vụ chính.
+     (ghi SAU afterCommit của transaction ngoài + try/catch + chống spam theo type+link) —
+     không được ném lỗi vào nghiệp vụ chính, không tạo "thông báo ma" khi rollback.
   6. Rate limit: `RateLimitFilter` (auth 20 req/phút/IP, api 300 req/phút/IP) — in-memory,
      chuyển Redis khi chạy nhiều instance.
   7. Milestone: accept bid với `useMilestones=true` → KHÔNG hold toàn bộ; escrow được nạp/giải ngân
@@ -49,6 +50,10 @@ dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchai
      SUBSCRIBE conversation phải là participant (`StompAuthInterceptor`).
   10. Upload: mọi file qua `FileStorageService` (whitelist extension, 5MB, tên UUID);
       không bao giờ serve file theo tên gốc do người dùng đặt.
+  11. Entity đụng đến tiền/trạng thái (`Job`, `Wallet`, `Milestone`) có `@Version` (optimistic
+      locking) — entity mới cùng loại phải thêm @Version; xung đột trả 409 qua GlobalExceptionHandler.
+  12. Endpoint public KHÔNG trả `UserDto` (có email) — dùng `PublicUserDto`. Danh sách DTO phải map
+      theo lô (`toDtos` + query batch), không gọi query per-item (N+1).
 
 ---
 

@@ -30,6 +30,34 @@ public final class ClaudeClassifier implements TopicClassifier {
                 .build();
     }
 
+    /**
+     * Retry với exponential backoff cho lỗi tạm thời (rule CLAUDE.md §2):
+     * 3 lần thử, chờ 500ms → 1s. Hết retry mới ném lỗi để ResilientClassifier fallback local.
+     * Chạy trên virtual threads nên sleep không tốn platform thread.
+     */
+    private String postWithRetry(Object body) {
+        var maxAttempts = 3;
+        var delayMs = 500L;
+        org.springframework.web.client.RestClientException lastError = null;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return restClient.post().uri("/v1/messages").body(body).retrieve().body(String.class);
+            } catch (org.springframework.web.client.RestClientException e) {
+                lastError = e;
+                if (attempt < maxAttempts) {
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                    delayMs *= 2;
+                }
+            }
+        }
+        throw lastError;
+    }
+
     @Override
     public ClassificationResult classify(String title, String description) {
         var topicList = topicRepository.findAll().stream()
@@ -55,11 +83,7 @@ public final class ClaudeClassifier implements TopicClassifier {
                 "max_tokens", 1024,
                 "messages", new Object[] {Map.of("role", "user", "content", prompt)});
 
-        var response = restClient.post()
-                .uri("/v1/messages")
-                .body(body)
-                .retrieve()
-                .body(String.class);
+        var response = postWithRetry(body);
 
         try {
             var root = objectMapper.readTree(response);

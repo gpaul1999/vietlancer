@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -30,6 +31,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private record Window(long startEpochMinute, AtomicInteger count) {}
 
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
+
+    /**
+     * CHỈ bật khi app đứng sau reverse proxy tin cậy (nginx/CDN) có ghi đè X-Forwarded-For.
+     * Mặc định false: header do client tự gửi được → giả mạo để né rate limit.
+     */
+    @Value("${app.rate-limit.trust-forwarded-header:false}")
+    private boolean trustForwardedHeader;
 
     @Override
     protected void doFilterInternal(
@@ -67,10 +75,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    private static String clientIp(HttpServletRequest request) {
-        var forwarded = request.getHeader("X-Forwarded-For");
-        return forwarded != null && !forwarded.isBlank()
-                ? forwarded.split(",")[0].trim()
-                : request.getRemoteAddr();
+    private String clientIp(HttpServletRequest request) {
+        if (trustForwardedHeader) {
+            var forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                return forwarded.split(",")[0].trim();
+            }
+        }
+        return request.getRemoteAddr();
     }
 }

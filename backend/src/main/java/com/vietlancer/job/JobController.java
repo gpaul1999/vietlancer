@@ -43,7 +43,7 @@ public class JobController {
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return jobService.search(topic, q, page, Math.min(size, 50));
+        return jobService.search(topic, q, Math.max(0, page), Math.clamp(size, 1, 50));
     }
 
     @GetMapping("/mine")

@@ -50,12 +50,26 @@ public class ChatController {
         var job = jobService.find(request.jobId());
         var freelancer = userRepository.findById(request.freelancerId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy freelancer"));
-        return toDto(chatService.open(user, job, freelancer));
+        var conversation = chatService.open(user, job, freelancer);
+        var lastMessage = messageRepository.findFirstByConversationIdOrderByCreatedAtDesc(conversation.getId())
+                .map(Message::getContent)
+                .orElse(null);
+        return toDto(conversation, lastMessage);
     }
 
     @GetMapping
     public List<ConversationDto> myConversations(@AuthenticationPrincipal User user) {
-        return conversationRepository.findAllForUser(user.getId()).stream().map(this::toDto).toList();
+        var conversations = conversationRepository.findAllForUser(user.getId());
+        // 1 query lấy tin nhắn cuối cho cả danh sách — tránh N+1
+        var ids = conversations.stream().map(Conversation::getId).toList();
+        var lastMessages = ids.isEmpty()
+                ? java.util.Map.<Long, String>of()
+                : messageRepository.lastMessagesFor(ids).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                m -> m.getConversation().getId(), Message::getContent));
+        return conversations.stream()
+                .map(c -> toDto(c, lastMessages.get(c.getId())))
+                .toList();
     }
 
     @GetMapping("/{id}/messages")
@@ -79,10 +93,7 @@ public class ChatController {
         return dto;
     }
 
-    private ConversationDto toDto(Conversation c) {
-        var lastMessage = messageRepository.findFirstByConversationIdOrderByCreatedAtDesc(c.getId())
-                .map(Message::getContent)
-                .orElse(null);
+    private ConversationDto toDto(Conversation c, String lastMessage) {
         return new ConversationDto(
                 c.getId(),
                 c.getJob().getId(),

@@ -30,11 +30,39 @@ public class DataSeeder implements CommandLineRunner {
     private final JobService jobService;
     private final WalletService walletService;
 
+    /** Mật khẩu admin qua env (rule: no hardcoded secrets). Trống → không tạo admin. */
+    @org.springframework.beans.factory.annotation.Value("${app.admin.password:}")
+    private String adminPassword;
+
+    /** Tắt seed dữ liệu demo ở production (profile postgres mặc định tắt). */
+    @org.springframework.beans.factory.annotation.Value("${app.seed-demo:true}")
+    private boolean seedDemo;
+
     @Override
     @Transactional
     public void run(String... args) {
         seedTopics();
-        seedDemoData();
+        seedAdmin();
+        if (seedDemo) {
+            seedDemoData();
+        }
+    }
+
+    private void seedAdmin() {
+        if (userRepository.findByEmail("admin@vietlancer.vn").isPresent()) {
+            return;
+        }
+        if (adminPassword == null || adminPassword.isBlank()) {
+            log.warn("APP_ADMIN_PASSWORD chưa được đặt — bỏ qua tạo tài khoản quản trị");
+            return;
+        }
+        userRepository.save(User.builder()
+                .email("admin@vietlancer.vn")
+                .password(passwordEncoder.encode(adminPassword))
+                .fullName("Quản trị viên")
+                .role(Role.ADMIN)
+                .build());
+        log.info("Đã tạo tài khoản quản trị admin@vietlancer.vn");
     }
 
     private void seedTopics() {
@@ -69,15 +97,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedDemoData() {
-        if (userRepository.count() > 0) {
+        if (userRepository.existsByEmail("client@demo.vn")) {
             return;
         }
-        userRepository.save(User.builder()
-                .email("admin@vietlancer.vn")
-                .password(passwordEncoder.encode("password123"))
-                .fullName("Quản trị viên")
-                .role(Role.ADMIN)
-                .build());
         var client = userRepository.save(User.builder()
                 .email("client@demo.vn")
                 .password(passwordEncoder.encode("password123"))

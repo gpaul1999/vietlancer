@@ -15,4 +15,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Double averageRating(@Param("userId") Long userId);
 
     long countByRevieweeId(Long revieweeId);
+
+    /** Rating trung bình + số lượng theo lô user — tránh N+1 ở danh bạ freelancer. */
+    @Query("""
+            select r.reviewee.id, avg(r.rating), count(r) from Review r
+            where r.reviewee.id in :userIds group by r.reviewee.id
+            """)
+    java.util.List<Object[]> ratingSummaries(@Param("userIds") java.util.Collection<Long> userIds);
 }

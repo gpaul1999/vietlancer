@@ -5,6 +5,45 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-07-03 — Session 5: Code review toàn bộ + sửa 10 phát hiện
+
+Review high-effort (8 góc + verify, 2 phát hiện xác nhận bằng thực nghiệm). 10 finding đã sửa HẾT:
+
+1. **Lộ email** (security): `GET /api/users/{id}` public trả UserDto có email → tạo `PublicUserDto`
+   (không email); UserDto đầy đủ chỉ còn ở `/auth/me`. FE: `User.email` thành optional.
+2. **Race condition tiền** (correctness): thêm `@Version` (optimistic locking) vào `Job`, `Wallet`,
+   `Milestone` → accept 2 bid đồng thời / double-click fund-release giờ ném
+   OptimisticLockingFailureException → 409. LƯU Ý: schema đổi → dev phải xóa `backend/data/`.
+3. **Sổ cái ví lệch** (correctness): releaseEscrow ghi PAYOUT=+gross rồi FEE=-fee
+   (tổng = net = thay đổi balance). Test `soCaiViKhopVoiSoDu` chốt invariant này.
+4. **Error handling**: GlobalExceptionHandler thêm IllegalArgumentException/TypeMismatch→400,
+   OptimisticLocking→409, fallback Exception→500 (log, không lộ stack); permit `/error`
+   (trước đó lỗi với user ẩn danh bị che thành 403); clamp page/size ở controller.
+5. **Rate-limit bypass**: X-Forwarded-For chỉ được tin khi `app.rate-limit.trust-forwarded-header=true`
+   (mặc định false; chỉ bật sau reverse proxy tin cậy).
+6. **Premium ordering đúng cam kết**: đưa exists-subscription vào ORDER BY của query
+   (JobRepository.search + UserRepository.searchByRole), bỏ sort in-memory sau phân trang.
+   Query search đổi từ join distinct → exists (cần cho order by). Test chốt: job Premium cũ hơn vẫn đứng đầu.
+7. **N+1**: batch queries — `BidRepository.countByJobIds`, `SubscriptionRepository.premiumUserIdsIn`
+   (+ `SubscriptionService.premiumUserIds`), `ReviewRepository.ratingSummaries`,
+   `MessageRepository.lastMessagesFor`; JobService.toDtos / BidController.toDtos /
+   UserController.freelancers / ChatController.myConversations dùng lô. Trang 10 job: 21 query → 3.
+8. **Thông báo ma**: NotificationService ghi thông báo trong afterCommit của tx ngoài
+   (TransactionSynchronization + TransactionTemplate REQUIRES_NEW); ngoài tx thì ghi ngay.
+9. **Claude retry**: postWithRetry 3 lần, backoff 500ms→1s trước khi fallback local.
+10. **Admin password**: `app.admin.password` từ env (`APP_ADMIN_PASSWORD`); dev default password123,
+    profile postgres KHÔNG default (trống → không tạo admin); demo data gate qua `app.seed-demo`
+    (postgres mặc định false). Fix kèm: seedDemoData check theo email demo (trước check count>0
+    nên admin tạo trước làm demo bị bỏ qua).
+
+Kiểm chứng: 17 tests xanh (3 test mới trong ReviewFixesIntegrationTest); e2e live: email không còn
+trong profile public, /api/jobs/abc → 400, page=-1 → 200 (clamp), admin login OK, seed đủ 3 job.
+
+Chưa sửa (cleanup mức thấp, đã ghi nhận): gom helper ownership-check dùng chung, gom markup
+avatar/pagination ở FE, cache kết quả classifier cho suggestedFor.
+
+---
+
 ## 2026-07-02 — Session 4: WebSocket chat real-time, upload file, SEO
 
 ### WebSocket chat (STOMP)

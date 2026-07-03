@@ -2,12 +2,14 @@ package com.vietlancer.user;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 
-public record UserDto(
+/**
+ * Hồ sơ công khai — KHÔNG chứa email hay bất kỳ thông tin liên hệ riêng tư nào.
+ * (UserDto đầy đủ chỉ trả cho chính chủ qua /api/auth/me.)
+ */
+public record PublicUserDto(
         Long id,
-        String email,
         String fullName,
         Role role,
         String bio,
@@ -16,21 +18,13 @@ public record UserDto(
         String avatarUrl,
         Instant createdAt) {
 
-    static List<String> skillsOf(User user) {
-        return user.getSkills() == null || user.getSkills().isBlank()
-                ? List.of()
-                : Arrays.stream(user.getSkills().split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
-    }
-
-    public static UserDto from(User user) {
-        var skills = skillsOf(user);
-        return new UserDto(
+    public static PublicUserDto from(User user) {
+        return new PublicUserDto(
                 user.getId(),
-                user.getEmail(),
                 user.getFullName(),
                 user.getRole(),
                 user.getBio(),
-                skills,
+                UserDto.skillsOf(user),
                 user.getHourlyRate(),
                 user.getAvatarUrl(),
                 user.getCreatedAt());

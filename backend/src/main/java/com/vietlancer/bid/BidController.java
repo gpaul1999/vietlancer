@@ -63,22 +63,19 @@ public class BidController {
         var job = jobService.find(jobId);
         var bids = bidRepository.findByJobIdOrderByCreatedAtDesc(jobId);
         if (user != null && job.getClient().getId().equals(user.getId())) {
-            return bids.stream().map(this::toDto).toList();
+            return toDtos(bids);
         }
         if (user != null) {
-            return bids.stream()
+            return toDtos(bids.stream()
                     .filter(b -> b.getFreelancer().getId().equals(user.getId()))
-                    .map(this::toDto)
-                    .toList();
+                    .toList());
         }
         return List.of();
     }
 
     @GetMapping("/bids/mine")
     public List<BidDto> mine(@AuthenticationPrincipal User user) {
-        return bidRepository.findByFreelancerIdOrderByCreatedAtDesc(user.getId()).stream()
-                .map(this::toDto)
-                .toList();
+        return toDtos(bidRepository.findByFreelancerIdOrderByCreatedAtDesc(user.getId()));
     }
 
     public record AcceptBody(boolean useMilestones) {}
@@ -92,13 +89,27 @@ public class BidController {
     }
 
     private BidDto toDto(Bid bid) {
+        return toDto(bid, subscriptionService.isPremium(bid.getFreelancer().getId()));
+    }
+
+    /** Map danh sách bid với 1 query premium theo lô — tránh N+1. */
+    private List<BidDto> toDtos(List<Bid> bids) {
+        if (bids.isEmpty()) {
+            return List.of();
+        }
+        var freelancerIds = bids.stream().map(b -> b.getFreelancer().getId()).distinct().toList();
+        var premiumIds = subscriptionService.premiumUserIds(freelancerIds);
+        return bids.stream().map(b -> toDto(b, premiumIds.contains(b.getFreelancer().getId()))).toList();
+    }
+
+    private BidDto toDto(Bid bid, boolean freelancerPremium) {
         var f = bid.getFreelancer();
         return new BidDto(
                 bid.getId(),
                 bid.getJob().getId(),
                 bid.getJob().getTitle(),
                 new BidDto.FreelancerRef(f.getId(), f.getFullName(), f.getAvatarUrl(), f.getSkills(),
-                        subscriptionService.isPremium(f.getId())),
+                        freelancerPremium),
                 bid.getAmount(),
                 bid.getDeliveryDays(),
                 bid.getCoverLetter(),

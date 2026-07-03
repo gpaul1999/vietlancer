@@ -60,4 +60,8 @@ public class Milestone {
     @Builder.Default
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    /** Optimistic locking: chặn double-click fund/release cùng một mốc. */
+    @jakarta.persistence.Version
+    private long version;
 }
