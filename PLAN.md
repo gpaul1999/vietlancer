@@ -147,3 +147,35 @@ cd frontend && npm install && npm run dev
 docker compose up -d postgres
 SPRING_PROFILES_ACTIVE=postgres ./gradlew bootRun
 ```
+
+## 8. Chiến lược cạnh tranh & dài hạn (chốt 2026-07-03)
+
+### 0–6 tháng: RA MẮT & HỌC (ưu tiên theo thứ tự)
+1. **Đưa lên production**: VPS + Postgres + nginx/SSL, CI/CD GitHub Actions (test + build mỗi PR),
+   backup DB hằng ngày, monitoring (Spring Actuator + uptime alert). Điều khoản sử dụng + chính sách.
+2. **Thanh toán thật** (chờ merchant VNPay/MoMo): nạp ví thật thay mô phỏng.
+   ⚠️ Pháp lý escrow/ví nội bộ có thể đụng quy định trung gian thanh toán — tham vấn luật sư,
+   cân nhắc mô hình "thanh toán theo hợp đồng qua cổng" nếu ví bị vướng.
+3. **Chiến lược khởi động nguồn cung theo NICHE**: không trải 18 topic — chọn 3-4 topic
+   (đề xuất: web-dev, design, content, video), tuyển tay 100-200 freelancer chất lượng,
+   KYC verified 100%, tặng Premium 3 tháng. Cầu đến từ SEO + cộng đồng.
+4. **SEO content bằng dữ liệu độc quyền**: trang topic tĩnh + "Báo giá freelance VN theo lĩnh vực"
+   sinh từ PricingService — content không đối thủ nào copy được vì cần data giao dịch.
+5. **Bật Claude API** khi có doanh thu (đổi env) + thêm AI viết mô tả job (giảm tranh chấp).
+6. **Đo funnel**: đăng job → có bid → accept → complete; NPS 2 phía.
+
+### 6–24 tháng: XÂY MOAT
+- **Data moat**: mỗi giao dịch nuôi AI pricing/matching → càng nhiều GMV càng chính xác,
+  đối thủ không sao chép được; thêm fraud detection từ pattern thật.
+- **Trust moat**: eKYC có ảnh giấy tờ (provider), cấp bậc freelancer (Bronze→Platinum theo
+  GMV + rating), cam kết SLA phân xử khiếu nại 48h thành lời hứa thương hiệu.
+- **Scale kỹ thuật THEO TÍN HIỆU** (mục 5): Redis (rate limit + cache) khi ≥2 instance;
+  semantic search bằng embeddings (pgvector) thay LIKE; tách ai-classifier → notification →
+  chat; S3 cho file; broker relay cho WebSocket.
+- **Mở rộng sản phẩm**: gói dịch vụ đóng sẵn kiểu Fiverr song song với đấu giá job;
+  gói doanh nghiệp (thuê team + invoice); mobile app React Native (tái dùng 100% API);
+  i18n tiếng Anh → thị trường ĐNÁ.
+
+### Nguyên tắc bất biến
+Niềm tin dòng tiền (escrow/milestone/dispute) + AI hai chiều là 2 trụ cạnh tranh;
+mọi tính năng mới phải củng cố ít nhất 1 trong 2 trụ, nếu không thì hoãn.
