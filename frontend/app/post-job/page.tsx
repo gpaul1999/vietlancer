@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import type { ClassifyPreview, Job } from '@/lib/types';
 import TopicBadge from '@/components/TopicBadge';
+import PriceHint from '@/components/PriceHint';
 
 export default function PostJobPage() {
   const { user, loading } = useAuth();
@@ -127,6 +128,9 @@ export default function PostJobPage() {
               <p className="text-xs text-slate-500">
                 {preview.explanation} <i>(engine: {preview.engine})</i>
               </p>
+              {preview.topics[0] && (
+                <PriceHint topicSlug={preview.topics[0].slug} label="Ngân sách tham khảo cho lĩnh vực này" />
+              )}
             </div>
           )}
         </div>

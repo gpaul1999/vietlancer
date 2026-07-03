@@ -18,6 +18,7 @@ public class AiController {
 
     private final TopicClassifier topicClassifier;
     private final TopicRepository topicRepository;
+    private final PricingService pricingService;
 
     public record PreviewRequest(
             @NotBlank @Size(max = 200) String title,
@@ -31,6 +32,13 @@ public class AiController {
      * Xem trước topic AI sẽ gán cho job trước khi đăng.
      * Client không tự chọn topic — đây chỉ là bước minh bạch hóa kết quả AI.
      */
+    /** Gợi ý giá theo topic từ dữ liệu bid lịch sử (p25/median/p75). */
+    @org.springframework.web.bind.annotation.GetMapping("/price-suggestion")
+    public PricingService.PriceSuggestion priceSuggestion(
+            @org.springframework.web.bind.annotation.RequestParam String topic) {
+        return pricingService.suggest(topic);
+    }
+
     @PostMapping("/classify-preview")
     public PreviewResponse preview(@Valid @RequestBody PreviewRequest request) {
         var result = topicClassifier.classify(request.title(), request.description());

@@ -50,5 +50,15 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
     List<Job> findByClientIdOrderByCreatedAtDesc(Long clientId);
 
+    /** Số job đã hoàn thành theo lô freelancer — điểm kinh nghiệm cho AI matching. */
+    @Query("""
+            select j.assignedFreelancer.id, count(j) from Job j
+            where j.status = :status and j.assignedFreelancer.id in :freelancerIds
+            group by j.assignedFreelancer.id
+            """)
+    List<Object[]> completedCountsByFreelancerIds(
+            @Param("status") Job.Status status,
+            @Param("freelancerIds") java.util.Collection<Long> freelancerIds);
+
     List<Job> findByAssignedFreelancerIdOrderByCreatedAtDesc(Long freelancerId);
 }

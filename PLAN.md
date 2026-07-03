@@ -123,10 +123,10 @@ rate limiting, tests (unit + integration).
 | Tính năng | Mô tả |
 |---|---|
 | Claude classifier | Bật engine `claude` (code sẵn) khi có doanh thu |
-| **AI matching 2 chiều** | Xếp hạng freelancer phù hợp nhất cho từng job (skill × topic × rating × lịch sử) và ngược lại |
-| **AI gợi ý giá** | Phân tích bid lịch sử theo topic → gợi ý ngân sách cho client, giá chào cho freelancer |
-| **AI hỗ trợ viết mô tả job** | Client nhập 2-3 dòng → AI sinh mô tả đầy đủ, rõ phạm vi (giảm tranh chấp) |
-| AI chấm chất lượng bid | Cảnh báo bid spam/copy-paste cho client |
+| ✅ **AI matching** (XONG) | Xếp hạng freelancer phù hợp cho job: 55% khớp topic (classifier trên skills+bio) + 25% rating + 15% kinh nghiệm + 5% Premium, kèm lý do. Chiều ngược lại (gợi ý job cho freelancer) đã có từ MVP |
+| ✅ **AI gợi ý giá** (XONG) | p25/median/p75 từ bid lịch sử theo topic (ưu tiên bid được chấp nhận); tự ẩn khi < 3 mẫu. Hiện ở post-job (ngân sách) + bid form (giá chào) |
+| ✅ AI chấm chất lượng bid (XONG) | Cảnh báo cho chủ job: thư chào quá ngắn / rập khuôn (dùng lại y hệt) / chung chung không nhắc đến job |
+| **AI hỗ trợ viết mô tả job** | Client nhập 2-3 dòng → AI sinh mô tả đầy đủ (cần engine claude — làm khi bật API) |
 | AI phát hiện gian lận | Pattern giao dịch bất thường, tài khoản ảo |
 
 ### Phase 4 — Scale

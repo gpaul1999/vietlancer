@@ -90,6 +90,31 @@ export interface Bid {
   coverLetter: string;
   status: BidStatus;
   createdAt: string;
+  /** Cảnh báo chất lượng do AI check — chỉ có khi chủ job xem. */
+  warnings: string[];
+}
+
+export interface FreelancerMatch {
+  freelancerId: number;
+  fullName: string;
+  avatarUrl?: string;
+  skills?: string;
+  hourlyRate?: number;
+  score: number;
+  premium: boolean;
+  ratingAvg: number | null;
+  ratingCount: number;
+  completedJobs: number;
+  reasons: string[];
+}
+
+export interface PriceSuggestion {
+  topicSlug: string;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+  sampleSize: number;
+  source: string;
 }
 
 export interface PreviewTopic {

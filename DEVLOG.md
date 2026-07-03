@@ -5,6 +5,39 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-07-03 — Session 6: Phase 3 — AI matching, AI gợi ý giá, AI chấm chất lượng bid
+
+Toàn bộ chạy local (miễn phí, tái dùng LocalHybridClassifier); bật engine claude thì chất lượng tự tăng.
+
+### AI matching (`ai/MatchingService`)
+- `GET /api/jobs/{id}/matches` (CHỈ chủ job): top 5 freelancer, điểm = 0.55×khớp topic
+  (classifier trên skills+bio, trung bình trên các topic của job) + 0.25×rating (0.5 nếu chưa có)
+  + 0.15×kinh nghiệm (completed/10, cap 1) + 0.05 Premium; kèm `reasons` giải thích.
+- Batch 3 query (rating/premium/completed) cho toàn bộ ứng viên; ứng viên = freelancer có skills.
+  **Lưu ý**: nhận `jobId` (tự load trong tx riêng) — KHÔNG nhận entity detached (đã dính
+  LazyInitializationException trong test vì vậy). Khi user đông → phân trang ứng viên + cache.
+- FE: `MatchList` trong job detail (owner, OPEN) — score %, lý do, link profile.
+
+### AI gợi ý giá (`ai/PricingService`)
+- `GET /api/ai/price-suggestion?topic=slug`: p25/median/p75 (nội suy tuyến tính) từ
+  `BidRepository.amountsByTopic`; ưu tiên bid ACCEPTED (≥5 mẫu), fallback mọi bid (≥3), dưới đó
+  trả median=null để UI ẩn (không gợi ý nhiễu từ mẫu quá nhỏ).
+- FE: `PriceHint` ở post-job (sau khi AI preview topic → ngân sách tham khảo) + bid form (giá chào).
+
+### AI chấm chất lượng bid (BidController.qualityWarnings)
+- Chỉ điền `warnings` khi CHỦ JOB xem list: thư < 30 ký tự / rập khuôn
+  (`countByFreelancerIdAndCoverLetter > 1`) / chung chung (không chứa từ ≥4 ký tự nào của title
+  đã normalize + không nhắc tên topic). `LocalHybridClassifier.normalize` chuyển public để tái dùng.
+- FE: badge ⚠️ vàng trong danh sách bid.
+
+### Kiểm chứng
+- 23 tests xanh (PricingServiceTest percentile; Phase3IntegrationTest: matching xếp dân web trên
+  designer cho job web, pricing median đúng với 3 mẫu, ẩn khi thiếu mẫu).
+- E2E live: matching trả demo freelancer 26% + lý do; 403 với người ngoài; bid "quan tam ib em nhe"
+  bị flag 2 cảnh báo, bid tử tế không flag; topic thiếu dữ liệu → median null.
+
+---
+
 ## 2026-07-03 — Session 5: Code review toàn bộ + sửa 10 phát hiện
 
 Review high-effort (8 góc + verify, 2 phát hiện xác nhận bằng thực nghiệm). 10 finding đã sửa HẾT:

@@ -9,6 +9,8 @@ import { formatVnd, formatDate, timeAgo } from '@/lib/format';
 import TopicBadge from '@/components/TopicBadge';
 import MilestonePanel from '@/components/MilestonePanel';
 import DisputePanel from '@/components/DisputePanel';
+import MatchList from '@/components/MatchList';
+import PriceHint from '@/components/PriceHint';
 
 export default function JobDetailClient() {
   const { id } = useParams<{ id: string }>();
@@ -191,10 +193,18 @@ export default function JobDetailClient() {
         </div>
       )}
 
+      {/* AI matching cho chủ job đang nhận chào giá */}
+      {isOwner && job.status === 'OPEN' && <MatchList jobId={job.id} />}
+
       {/* Bid form for freelancers */}
       {user?.role === 'FREELANCER' && job.status === 'OPEN' && !myBid && (
         <div className="card">
           <h2 className="font-semibold">Gửi chào giá</h2>
+          {job.topics[0] && (
+            <div className="mt-2">
+              <PriceHint topicSlug={job.topics[0].slug} label="Giá chào tham khảo" />
+            </div>
+          )}
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <div>
               <label className="label">Báo giá (VND)</label>
@@ -246,6 +256,15 @@ export default function JobDetailClient() {
                 </div>
                 {bid.freelancer.skills && (
                   <p className="mt-1 text-xs text-slate-500">Kỹ năng: {bid.freelancer.skills}</p>
+                )}
+                {bid.warnings && bid.warnings.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {bid.warnings.map((w) => (
+                      <span key={w} className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                        ⚠️ {w}
+                      </span>
+                    ))}
+                  </div>
                 )}
                 <p className="mt-2 text-sm text-slate-700">{bid.coverLetter}</p>
                 <div className="mt-3 flex flex-wrap gap-2">

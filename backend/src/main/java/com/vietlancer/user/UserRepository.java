@@ -1,5 +1,6 @@
 package com.vietlancer.user;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    /** Ứng viên cho AI matching: freelancer có khai kỹ năng. (Chuyển sang paging khi user đông.) */
+    List<User> findByRoleAndSkillsIsNotNull(Role role);
 
     /** Premium xếp trước ngay trong ORDER BY — đúng trên mọi trang. */
     @Query("""

@@ -87,7 +87,7 @@ public final class LocalHybridClassifier implements TopicClassifier {
     }
 
     /** Bỏ dấu tiếng Việt, lowercase: "Lập trình Web" → "lap trinh web". */
-    static String normalize(String input) {
+    public static String normalize(String input) {
         var lower = input.toLowerCase();
         var decomposed = Normalizer.normalize(lower, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
