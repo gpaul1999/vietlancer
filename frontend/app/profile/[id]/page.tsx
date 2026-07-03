@@ -31,7 +31,15 @@ export default function ProfilePage() {
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-bold">{profile.fullName}</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-bold">
+              {profile.fullName}
+              {profile.verified && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                  title="Danh tính đã được VietLancer xác minh">
+                  ✅ Đã xác minh
+                </span>
+              )}
+            </h1>
             <p className="text-sm text-slate-500">
               {profile.role === 'CLIENT' ? 'Người thuê' : 'Freelancer'} · Tham gia {formatDate(profile.createdAt)}
             </p>

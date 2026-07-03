@@ -74,6 +74,32 @@ public class JobController {
         return jobService.get(id);
     }
 
+    /** Danh sách job đã lưu của tôi. */
+    @GetMapping("/saved")
+    public List<JobDto> saved(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw com.vietlancer.common.ApiException.forbidden("Chưa đăng nhập");
+        }
+        return jobService.savedFor(user);
+    }
+
+    @PostMapping("/{id}/save")
+    public void save(@AuthenticationPrincipal User user, @PathVariable Long id) {
+        jobService.saveJob(user, id);
+    }
+
+    @PostMapping("/{id}/unsave")
+    public void unsave(@AuthenticationPrincipal User user, @PathVariable Long id) {
+        jobService.unsaveJob(user, id);
+    }
+
+    /** Job này đã được tôi lưu chưa (hiển thị trạng thái nút ♥). */
+    @GetMapping("/{id}/saved-status")
+    public java.util.Map<String, Boolean> savedStatus(
+            @AuthenticationPrincipal User user, @PathVariable Long id) {
+        return java.util.Map.of("saved", user != null && jobService.isSaved(user, id));
+    }
+
     /** AI gợi ý freelancer phù hợp cho job — chỉ chủ job xem được. */
     @GetMapping("/{id}/matches")
     public List<MatchDto> matches(@AuthenticationPrincipal User user, @PathVariable Long id) {

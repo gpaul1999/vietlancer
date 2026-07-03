@@ -37,6 +37,9 @@ public class JobService {
     private final NotificationService notificationService;
     private final DisputeGuard disputeGuard;
     private final MilestoneRepository milestoneRepository;
+    private final SavedJobRepository savedJobRepository;
+    private final com.vietlancer.topic.TopicFollowRepository topicFollowRepository;
+    private final com.vietlancer.user.UserRepository userRepository;
 
     @Value("${app.platform.fee-percent}")
     private int feePercent;
@@ -74,7 +77,49 @@ public class JobService {
                 .aiExplanation(result.explanation() + " — " + perTopic)
                 .build());
         job.getTopics().addAll(topics);
-        return toDto(jobRepository.save(job));
+        var saved = jobRepository.save(job);
+        alertTopicFollowers(saved, topics);
+        return toDto(saved);
+    }
+
+    /** Job alert: báo cho người theo dõi các topic của job mới (trừ chính client đăng). */
+    private void alertTopicFollowers(Job job, List<com.vietlancer.topic.Topic> topics) {
+        var topicIds = topics.stream().map(com.vietlancer.topic.Topic::getId).toList();
+        if (topicIds.isEmpty()) {
+            return;
+        }
+        var followerIds = topicFollowRepository.findFollowerIdsByTopicIds(topicIds).stream()
+                .filter(id -> !id.equals(job.getClient().getId()))
+                .toList();
+        userRepository.findAllById(followerIds).forEach(follower ->
+                notificationService.notify(follower, Notification.Type.NEW_JOB_ALERT,
+                        "🔔 Job mới thuộc lĩnh vực bạn theo dõi: \"%s\"".formatted(job.getTitle()),
+                        "/jobs/" + job.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobDto> savedFor(User user) {
+        return toDtos(savedJobRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
+                .map(SavedJob::getJob)
+                .toList());
+    }
+
+    @Transactional
+    public void saveJob(User user, Long jobId) {
+        var job = find(jobId);
+        if (!savedJobRepository.existsByUserIdAndJobId(user.getId(), jobId)) {
+            savedJobRepository.save(SavedJob.builder().user(user).job(job).build());
+        }
+    }
+
+    @Transactional
+    public void unsaveJob(User user, Long jobId) {
+        savedJobRepository.deleteByUserIdAndJobId(user.getId(), jobId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isSaved(User user, Long jobId) {
+        return savedJobRepository.existsByUserIdAndJobId(user.getId(), jobId);
     }
 
     @Transactional(readOnly = true)

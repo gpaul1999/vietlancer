@@ -25,6 +25,7 @@ export default function JobDetailClient() {
   const [busy, setBusy] = useState(false);
   const [hasOpenDispute, setHasOpenDispute] = useState(false);
   const [acceptingBid, setAcceptingBid] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -38,6 +39,20 @@ export default function JobDetailClient() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!user) return;
+    api.get<{ saved: boolean }>(`/api/jobs/${id}/saved-status`).then((r) => setSaved(r.saved)).catch(() => {});
+  }, [id, user]);
+
+  const toggleSave = async () => {
+    try {
+      await api.post(`/api/jobs/${id}/${saved ? 'unsave' : 'save'}`);
+      setSaved(!saved);
+    } catch {
+      /* ignore */
+    }
+  };
 
   if (!job) {
     return <p className="py-12 text-center text-slate-500">{error || 'Đang tải…'}</p>;
@@ -88,7 +103,20 @@ export default function JobDetailClient() {
       <div className="card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-bold">{job.title}</h1>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">{job.status}</span>
+          <div className="flex items-center gap-2">
+            {user && (
+              <button
+                onClick={toggleSave}
+                title={saved ? 'Bỏ lưu job' : 'Lưu job để xem sau'}
+                className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
+                  saved ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-300 text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                {saved ? '❤️ Đã lưu' : '🤍 Lưu'}
+              </button>
+            )}
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">{job.status}</span>
+          </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {job.topics.map((t) => (

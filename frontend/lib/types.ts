@@ -1,5 +1,7 @@
 export type Role = 'CLIENT' | 'FREELANCER' | 'ADMIN';
 
+export type KycStatus = 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+
 export interface User {
   id: number;
   /** Chỉ có khi xem hồ sơ của chính mình (/auth/me) — hồ sơ public không trả email. */
@@ -10,6 +12,11 @@ export interface User {
   skills: string[];
   hourlyRate?: number;
   avatarUrl?: string;
+  /** Có ở /auth/me. */
+  kycStatus?: KycStatus;
+  kycNote?: string;
+  /** Có ở hồ sơ public — huy hiệu "Đã xác minh". */
+  verified?: boolean;
   createdAt: string;
 }
 
@@ -195,8 +202,40 @@ export interface FreelancerCard {
   hourlyRate?: number;
   avatarUrl?: string;
   premium: boolean;
+  verified: boolean;
   ratingAvg: number | null;
   ratingCount: number;
+}
+
+export interface AdminStats {
+  totalClients: number;
+  totalFreelancers: number;
+  jobsOpen: number;
+  jobsInProgress: number;
+  jobsCompleted: number;
+  jobsCancelled: number;
+  openDisputes: number;
+  activePremiumUsers: number;
+  pendingKyc: number;
+  gmv: number;
+  platformRevenue: number;
+}
+
+export interface KycEntry {
+  userId: number;
+  fullName: string;
+  email: string;
+  role: string;
+  idNumber: string;
+  createdAt: string;
+}
+
+export interface AdminRecentJob {
+  id: number;
+  title: string;
+  status: string;
+  clientName: string;
+  createdAt: string;
 }
 
 export interface FreelancerSearchResult {

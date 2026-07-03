@@ -41,8 +41,8 @@ export default function Navbar() {
           {loading ? null : user ? (
             <>
               {user.role === 'ADMIN' && (
-                <Link href="/admin/disputes" className="rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50">
-                  ⚖️ Phân xử
+                <Link href="/admin" className="rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50">
+                  🛠️ Quản trị
                 </Link>
               )}
               <NotificationBell />

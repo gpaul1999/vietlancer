@@ -17,6 +17,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** Ứng viên cho AI matching: freelancer có khai kỹ năng. (Chuyển sang paging khi user đông.) */
     List<User> findByRoleAndSkillsIsNotNull(Role role);
 
+    long countByRole(Role role);
+
+    List<User> findByKycStatusOrderByCreatedAtAsc(User.KycStatus kycStatus);
+
     /** Premium xếp trước ngay trong ORDER BY — đúng trên mọi trang. */
     @Query("""
             select u from User u

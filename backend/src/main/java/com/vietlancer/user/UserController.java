@@ -31,7 +31,7 @@ public class UserController {
 
     public record FreelancerCard(
             Long id, String fullName, String bio, List<String> skills, BigDecimal hourlyRate,
-            String avatarUrl, boolean premium, Double ratingAvg, long ratingCount) {}
+            String avatarUrl, boolean premium, boolean verified, Double ratingAvg, long ratingCount) {}
 
     public record FreelancerSearchResult(
             List<FreelancerCard> freelancers, int page, int totalPages, long totalElements) {}
@@ -63,6 +63,7 @@ public class UserController {
                             u.getHourlyRate(),
                             u.getAvatarUrl(),
                             premiumIds.contains(u.getId()),
+                            u.getKycStatus() == User.KycStatus.VERIFIED,
                             rating == null ? null : (Double) rating[1],
                             rating == null ? 0L : (Long) rating[2]);
                 })
@@ -83,6 +84,26 @@ public class UserController {
         return userRepository.findById(id)
                 .map(PublicUserDto::from)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy người dùng"));
+    }
+
+    public record KycRequest(
+            @jakarta.validation.constraints.NotBlank
+            @jakarta.validation.constraints.Pattern(regexp = "\\d{9,12}", message = "Số CCCD/CMND phải gồm 9-12 chữ số")
+            String idNumber) {}
+
+    /** Nộp hồ sơ xác minh danh tính (KYC) — admin sẽ duyệt thủ công. */
+    @org.springframework.web.bind.annotation.PostMapping("/me/kyc")
+    public UserDto submitKyc(@AuthenticationPrincipal User user, @Valid @RequestBody KycRequest request) {
+        if (user.getKycStatus() == User.KycStatus.VERIFIED) {
+            throw ApiException.badRequest("Tài khoản đã được xác minh");
+        }
+        if (user.getKycStatus() == User.KycStatus.PENDING) {
+            throw ApiException.conflict("Hồ sơ đang chờ duyệt");
+        }
+        user.setKycIdNumber(request.idNumber());
+        user.setKycStatus(User.KycStatus.PENDING);
+        user.setKycNote(null);
+        return UserDto.from(userRepository.save(user));
     }
 
     @PutMapping("/me")

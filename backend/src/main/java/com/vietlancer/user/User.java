@@ -55,4 +55,23 @@ public class User {
     @Builder.Default
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    /** Trạng thái xác minh danh tính (KYC) — VERIFIED được huy hiệu "Đã xác minh". */
+    public enum KycStatus {
+        NONE,      // Chưa nộp hồ sơ
+        PENDING,   // Đã nộp, chờ admin duyệt
+        VERIFIED,  // Đã xác minh
+        REJECTED   // Bị từ chối (xem kycNote)
+    }
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private KycStatus kycStatus = KycStatus.NONE;
+
+    /** Số CCCD/CMND người dùng khai khi nộp KYC (MVP: chưa upload ảnh giấy tờ). */
+    private String kycIdNumber;
+
+    /** Ghi chú của admin khi duyệt/từ chối. */
+    private String kycNote;
 }

@@ -5,6 +5,50 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-07-03 — Session 7: Hoàn tất Phase 2 — email, job alert, saved jobs, KYC, admin dashboard
+
+### Email notification (`notification/EmailService`)
+- Mirror thông báo in-app qua email, fire-and-forget trên virtual thread, không bao giờ ném lỗi
+  vào nghiệp vụ (pattern circuit-breaker). CHỈ hoạt động khi cấu hình SMTP qua env
+  (SPRING_MAIL_HOST/USERNAME/PASSWORD/PORT) — không có JavaMailSender bean thì bỏ qua êm.
+- Gắn trong `NotificationService.persist` SAU khi notification được tạo (cùng luật chống spam).
+  Config: `app.mail.from`, `app.frontend-url` (link trong email).
+
+### Job alert theo topic (`topic/TopicFollow`)
+- Follow/unfollow: `POST|DELETE /api/topics/{slug}/follow`, `GET /api/topics/followed`.
+- `JobService.create` → `alertTopicFollowers`: notify NEW_JOB_ALERT cho follower các topic của job
+  (trừ client đăng); dedupe sẵn theo type+link nên 1 job = 1 thông báo dù follow nhiều topic trúng.
+- FE: nút 🔔 theo dõi lĩnh vực trên trang /jobs khi đang lọc theo topic.
+
+### Saved jobs (`job/SavedJob`)
+- `POST /api/jobs/{id}/save|unsave`, `GET /api/jobs/saved`, `GET /api/jobs/{id}/saved-status`.
+- FE: nút ❤️ trên job detail, section "Job đã lưu" ở dashboard.
+
+### KYC (User.kycStatus: NONE→PENDING→VERIFIED/REJECTED)
+- User thêm kycStatus/kycIdNumber/kycNote. `POST /api/users/me/kyc` (CCCD 9-12 số, validate regex);
+  admin duyệt/từ chối → notification KYC_APPROVED/REJECTED. VERIFIED → `verified=true` trong
+  PublicUserDto + FreelancerCard → badge "✅ Đã xác minh" ở profile + danh bạ.
+- FE: section KYC ở /settings (trạng thái + form nộp/nộp lại).
+
+### Admin dashboard (`admin/AdminController` + FE `/admin`)
+- `GET /api/admin/stats`: users theo role, jobs theo status, dispute mở, Premium active,
+  KYC chờ, GMV (sum PAYOUT gross), doanh thu (−sum PLATFORM_FEE).
+- `GET /api/admin/kyc` + approve/reject; `GET /api/admin/jobs` (20 mới nhất) +
+  `POST /api/admin/jobs/{id}/takedown` (CHỈ job OPEN → CANCELLED + notify client;
+  job IN_PROGRESS phải qua luồng khiếu nại). Navbar admin → /admin (link tới /admin/disputes bên trong).
+
+### Chưa làm trong Phase 2 (chờ dịch vụ ngoài — ghi ở PLAN.md)
+- VNPay/MoMo: chờ tài khoản merchant của chủ dự án.
+- OTP điện thoại: chờ SMS provider. Upload ảnh giấy tờ KYC: nâng cấp sau.
+
+### Kiểm chứng
+- 23 tests xanh; e2e: follow seo → đăng job SEO → freelancer nhận NEW_JOB_ALERT; save/unsave;
+  KYC nộp → admin duyệt → profile public verified=true; CCCD "abc" → 400; stats đúng;
+  takedown OPEN → CANCELLED + client được báo; freelancer gọi admin API → 403;
+  không SMTP → mọi notify chạy êm.
+
+---
+
 ## 2026-07-03 — Session 6: Phase 3 — AI matching, AI gợi ý giá, AI chấm chất lượng bid
 
 Toàn bộ chạy local (miễn phí, tái dùng LocalHybridClassifier); bật engine claude thì chất lượng tự tăng.

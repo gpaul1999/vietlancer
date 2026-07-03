@@ -16,6 +16,7 @@ public record PublicUserDto(
         List<String> skills,
         BigDecimal hourlyRate,
         String avatarUrl,
+        boolean verified,
         Instant createdAt) {
 
     public static PublicUserDto from(User user) {
@@ -27,6 +28,7 @@ public record PublicUserDto(
                 UserDto.skillsOf(user),
                 user.getHourlyRate(),
                 user.getAvatarUrl(),
+                user.getKycStatus() == User.KycStatus.VERIFIED,
                 user.getCreatedAt());
     }
 }

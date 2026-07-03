@@ -14,6 +14,8 @@ public record UserDto(
         List<String> skills,
         BigDecimal hourlyRate,
         String avatarUrl,
+        User.KycStatus kycStatus,
+        String kycNote,
         Instant createdAt) {
 
     static List<String> skillsOf(User user) {
@@ -33,6 +35,8 @@ public record UserDto(
                 skills,
                 user.getHourlyRate(),
                 user.getAvatarUrl(),
+                user.getKycStatus(),
+                user.getKycNote(),
                 user.getCreatedAt());
     }
 }

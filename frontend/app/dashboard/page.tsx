@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [suggested, setSuggested] = useState<Job[]>([]);
+  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
 
@@ -21,6 +22,7 @@ export default function DashboardPage() {
     api.get<Job[]>('/api/jobs/mine').then(setJobs).catch(() => {});
     api.get<Wallet>('/api/wallet').then(setWallet).catch(() => {});
     api.get<SubscriptionStatus>('/api/subscriptions/me').then(setSub).catch(() => {});
+    api.get<Job[]>('/api/jobs/saved').then(setSavedJobs).catch(() => {});
     if (user.role === 'FREELANCER') {
       api.get<Bid[]>('/api/bids/mine').then(setBids).catch(() => {});
       api.get<Job[]>('/api/jobs/suggested').then(setSuggested).catch(() => {});
@@ -101,6 +103,16 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {/* Saved jobs */}
+      {savedJobs.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-xl font-bold">❤️ Job đã lưu</h2>
+          <div className="space-y-4">
+            {savedJobs.map((j) => <JobCard key={j.id} job={j} />)}
+          </div>
+        </section>
+      )}
 
       {/* Freelancer bids */}
       {user.role === 'FREELANCER' && (

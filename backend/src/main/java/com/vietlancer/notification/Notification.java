@@ -39,7 +39,11 @@ public class Notification {
         MILESTONE_SUBMITTED, // Client: freelancer báo hoàn thành milestone
         MILESTONE_RELEASED,  // Freelancer: milestone được giải ngân
         DISPUTE_OPENED,      // Bên còn lại: có khiếu nại
-        DISPUTE_RESOLVED     // Cả hai bên: khiếu nại đã được phân xử
+        DISPUTE_RESOLVED,    // Cả hai bên: khiếu nại đã được phân xử
+        NEW_JOB_ALERT,       // Follower của topic: có job mới thuộc lĩnh vực theo dõi
+        KYC_APPROVED,        // Hồ sơ xác minh được duyệt
+        KYC_REJECTED,        // Hồ sơ xác minh bị từ chối
+        JOB_REMOVED          // Admin gỡ job vi phạm
     }
 
     @Id

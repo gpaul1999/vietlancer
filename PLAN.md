@@ -110,14 +110,14 @@ rate limiting, tests (unit + integration).
 |---|---|---|
 | ✅ WebSocket chat real-time (XONG) | STOMP + JWT, fallback polling; typing indicator để sau | Có (cơ bản) |
 | ✅ Upload file: avatar + đính kèm chat (XONG) | Local storage, whitelist ext, 5MB; portfolio + S3 để sau | Có |
-| Cổng thanh toán VNPay/MoMo/ZaloPay | Thay deposit mô phỏng | Có |
+| ⏳ Cổng thanh toán VNPay/MoMo/ZaloPay | CHỜ tài khoản merchant của chủ dự án — deposit mô phỏng vẫn dùng tạm | Có |
 | ✅ **Thanh toán theo milestone** (XONG) | Chia job thành mốc, nạp/giải ngân escrow từng mốc — giảm rủi ro 2 bên | Không rõ → **lợi thế** |
 | ✅ **Trung tâm giải quyết tranh chấp** (XONG) | Khiếu nại đóng băng job, admin chia escrow linh hoạt | Yếu → **lợi thế** |
-| Email notification + job alert theo topic đã lưu | Digest hằng ngày | Có |
-| Lưu job yêu thích, lịch sử xem | | Có |
-| Admin dashboard: duyệt user, gỡ job xấu, thống kê | | — |
+| ✅ Email notification + job alert theo topic theo dõi (XONG) | Email mirror thông báo in-app khi cấu hình SMTP; follow topic → alert job mới. Digest hằng ngày để sau | Có |
+| ✅ Lưu job yêu thích (XONG) | Nút ❤️ + danh sách ở dashboard | Có |
+| ✅ Admin dashboard (XONG): thống kê (users/jobs/GMV/doanh thu), duyệt KYC, gỡ job OPEN | | — |
 | ✅ SEO nền tảng (XONG): metadata động, sitemap, robots, schema.org JobPosting | SSR toàn phần trang list + landing để sau | Có |
-| Xác thực: OTP điện thoại, KYC freelancer (huy hiệu "Đã xác minh") | | Có (KYC yếu) |
+| ✅ KYC (XONG): nộp CCCD → admin duyệt → huy hiệu "Đã xác minh" | OTP điện thoại chờ tích hợp SMS provider; upload ảnh giấy tờ nâng cấp sau | Có (KYC yếu) |
 
 ### Phase 3 — AI làm khác biệt hóa (moat thật sự so với vLancer)
 | Tính năng | Mô tả |

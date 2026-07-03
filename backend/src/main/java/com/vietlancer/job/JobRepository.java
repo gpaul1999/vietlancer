@@ -61,4 +61,8 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             @Param("freelancerIds") java.util.Collection<Long> freelancerIds);
 
     List<Job> findByAssignedFreelancerIdOrderByCreatedAtDesc(Long freelancerId);
+
+    long countByStatus(Job.Status status);
+
+    List<Job> findTop20ByOrderByCreatedAtDesc();
 }

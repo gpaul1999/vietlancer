@@ -66,6 +66,7 @@ export default function FreelancersPage() {
                     <div className="flex items-center gap-1 font-semibold">
                       <span className="truncate">{f.fullName}</span>
                       {f.premium && <span title="Freelancer Premium">⭐</span>}
+                      {f.verified && <span title="Danh tính đã xác minh">✅</span>}
                     </div>
                     <div className="text-xs text-slate-500">
                       {f.ratingCount > 0

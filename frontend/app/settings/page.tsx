@@ -145,6 +145,68 @@ export default function SettingsPage() {
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button className="btn-primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
       </form>
+
+      <KycSection />
+    </div>
+  );
+}
+
+/** Xác minh danh tính — huy hiệu "Đã xác minh" tăng độ tin cậy. */
+function KycSection() {
+  const { user, refresh } = useAuth();
+  const [idNumber, setIdNumber] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  if (!user) return null;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await api.post('/api/users/me/kyc', { idNumber });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nộp hồ sơ thất bại');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card mt-6">
+      <h2 className="font-semibold">🪪 Xác minh danh tính (KYC)</h2>
+      {user.kycStatus === 'VERIFIED' && (
+        <p className="mt-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">
+          ✅ Tài khoản đã được xác minh — huy hiệu hiển thị trên hồ sơ của bạn.
+        </p>
+      )}
+      {user.kycStatus === 'PENDING' && (
+        <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
+          ⏳ Hồ sơ đang chờ quản trị viên duyệt.
+        </p>
+      )}
+      {(user.kycStatus === 'NONE' || user.kycStatus === 'REJECTED') && (
+        <>
+          {user.kycStatus === 'REJECTED' && (
+            <p className="mt-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-600">
+              Hồ sơ trước bị từ chối{user.kycNote ? `: ${user.kycNote}` : ''}. Bạn có thể nộp lại.
+            </p>
+          )}
+          <p className="mt-1 text-xs text-slate-500">
+            Huy hiệu &quot;Đã xác minh&quot; giúp tăng đáng kể tỉ lệ được chọn. Nhập số CCCD/CMND (9-12 số).
+          </p>
+          <form onSubmit={submit} className="mt-3 flex gap-2">
+            <input className="input" pattern="\d{9,12}" placeholder="Số CCCD/CMND"
+              value={idNumber} onChange={(e) => setIdNumber(e.target.value)} required />
+            <button className="btn-primary shrink-0" disabled={busy}>
+              {busy ? 'Đang nộp…' : 'Nộp hồ sơ'}
+            </button>
+          </form>
+          {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+        </>
+      )}
     </div>
   );
 }
