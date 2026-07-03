@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +30,7 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final JobService jobService;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public record StartRequest(@NotNull Long jobId, @NotNull Long freelancerId) {}
 
@@ -69,8 +71,12 @@ public class ChatController {
     public MessageDto send(
             @AuthenticationPrincipal User user, @PathVariable Long id, @Valid @RequestBody MessageBody body) {
         var message = chatService.send(user, id, body.content());
-        return new MessageDto(message.getId(), message.getSender().getId(), message.getContent(),
+        var dto = new MessageDto(message.getId(), message.getSender().getId(), message.getContent(),
                 message.getCreatedAt());
+        // Realtime: đẩy tin nhắn tới người đang mở hội thoại (subscriber đã được
+        // StompAuthInterceptor xác minh là participant)
+        messagingTemplate.convertAndSend("/topic/conversations/" + id, dto);
+        return dto;
     }
 
     private ConversationDto toDto(Conversation c) {

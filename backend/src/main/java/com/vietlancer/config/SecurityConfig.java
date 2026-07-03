@@ -36,7 +36,9 @@ public class SecurityConfig {
                 .headers(h -> h.frameOptions(f -> f.sameOrigin())) // cho H2 console
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
+                        // /ws: handshake mở, xác thực JWT thật ở bước STOMP CONNECT (StompAuthInterceptor)
+                        // /files: file đã upload là public-read (URL chứa UUID ngẫu nhiên)
+                        .requestMatchers("/api/auth/**", "/h2-console/**", "/ws/**", "/files/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/topics/**", "/api/jobs/**", "/api/users/**").permitAll()
                         .anyRequest().authenticated())

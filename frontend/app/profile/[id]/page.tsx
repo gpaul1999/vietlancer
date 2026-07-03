@@ -22,9 +22,14 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="card">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-2xl font-bold text-brand-700">
-            {profile.fullName.charAt(0)}
-          </div>
+          {profile.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.avatarUrl} alt={profile.fullName} className="h-16 w-16 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-2xl font-bold text-brand-700">
+              {profile.fullName.charAt(0)}
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-bold">{profile.fullName}</h1>
             <p className="text-sm text-slate-500">

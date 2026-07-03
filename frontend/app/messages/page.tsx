@@ -2,10 +2,29 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { api, ApiError } from '@/lib/api';
+import { Client } from '@stomp/stompjs';
+import { api, ApiError, getToken, uploadFile, WS_URL } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import type { Conversation, Message } from '@/lib/types';
 import { formatDateTime } from '@/lib/format';
+
+const IMAGE_RE = /\.(png|jpe?g|webp|gif)$/i;
+
+/** Render nội dung tin nhắn: URL file đính kèm → ảnh/link, còn lại là text thuần. */
+function MessageContent({ content }: { content: string }) {
+  if (/^https?:\/\/\S+$/.test(content)) {
+    if (IMAGE_RE.test(content)) {
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={content} alt="Ảnh đính kèm" className="max-h-64 rounded-lg" />;
+    }
+    return (
+      <a href={content} target="_blank" rel="noopener noreferrer" className="underline">
+        📎 Tệp đính kèm
+      </a>
+    );
+  }
+  return <p className="whitespace-pre-wrap">{content}</p>;
+}
 
 function MessagesContent() {
   const { user } = useAuth();
@@ -15,7 +34,10 @@ function MessagesContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const [live, setLive] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -38,9 +60,34 @@ function MessagesContent() {
 
   useEffect(() => {
     loadMessages();
-    const interval = setInterval(loadMessages, 5000); // MVP: polling; phase 2 → WebSocket
+    // Fallback polling thưa — kênh chính là WebSocket bên dưới
+    const interval = setInterval(loadMessages, 20000);
     return () => clearInterval(interval);
   }, [loadMessages]);
+
+  // Realtime qua STOMP WebSocket: nhận tin nhắn mới ngay lập tức
+  useEffect(() => {
+    const token = getToken();
+    if (!token || !activeId) return;
+    const client = new Client({
+      brokerURL: WS_URL,
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      reconnectDelay: 5000,
+    });
+    client.onConnect = () => {
+      setLive(true);
+      client.subscribe(`/topic/conversations/${activeId}`, (frame) => {
+        const incoming = JSON.parse(frame.body) as Message;
+        setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
+      });
+    };
+    client.onWebSocketClose = () => setLive(false);
+    client.activate();
+    return () => {
+      setLive(false);
+      client.deactivate();
+    };
+  }, [activeId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,9 +99,25 @@ function MessagesContent() {
     try {
       await api.post(`/api/chats/${activeId}/messages`, { content: text.trim() });
       setText('');
-      await loadMessages();
+      if (!live) await loadMessages();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Không gửi được');
+    }
+  };
+
+  const attach = async (file: File | undefined) => {
+    if (!file || !activeId) return;
+    setUploading(true);
+    setError('');
+    try {
+      const uploaded = await uploadFile(file);
+      await api.post(`/api/chats/${activeId}/messages`, { content: uploaded.url });
+      if (!live) await loadMessages();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không gửi được file');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
@@ -94,11 +157,17 @@ function MessagesContent() {
       <section className="card flex min-h-[60vh] flex-col !p-0">
         {active ? (
           <>
-            <div className="border-b border-slate-100 px-5 py-3">
-              <div className="font-semibold">
-                {(active.client.id === user.id ? active.freelancer : active.client).fullName}
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+              <div>
+                <div className="font-semibold">
+                  {(active.client.id === user.id ? active.freelancer : active.client).fullName}
+                </div>
+                <div className="text-xs text-slate-500">Job: {active.jobTitle}</div>
               </div>
-              <div className="text-xs text-slate-500">Job: {active.jobTitle}</div>
+              <span className={`flex items-center gap-1.5 text-xs ${live ? 'text-emerald-600' : 'text-slate-400'}`}>
+                <span className={`h-2 w-2 rounded-full ${live ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                {live ? 'Real-time' : 'Đang kết nối…'}
+              </span>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
               {messages.map((m) => (
@@ -108,7 +177,7 @@ function MessagesContent() {
                       m.senderId === user.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-800'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{m.content}</p>
+                    <MessageContent content={m.content} />
                     <p className={`mt-1 text-[10px] ${m.senderId === user.id ? 'text-brand-100' : 'text-slate-400'}`}>
                       {formatDateTime(m.createdAt)}
                     </p>
@@ -119,6 +188,22 @@ function MessagesContent() {
             </div>
             {error && <p className="px-5 pb-2 text-sm text-rose-600">{error}</p>}
             <form onSubmit={send} className="flex gap-2 border-t border-slate-100 p-3">
+              <input
+                ref={fileRef}
+                type="file"
+                className="hidden"
+                accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+                onChange={(e) => attach(e.target.files?.[0])}
+              />
+              <button
+                type="button"
+                className="btn-secondary shrink-0 !px-3"
+                title="Gửi file đính kèm (tối đa 5MB)"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading ? '…' : '📎'}
+              </button>
               <input
                 className="input"
                 placeholder="Nhập tin nhắn…"

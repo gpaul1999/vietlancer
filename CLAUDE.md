@@ -44,6 +44,11 @@ dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchai
   8. Dispute: khi job có khiếu nại OPEN → mọi thao tác tiền/trạng thái bị đóng băng
      (`DisputeGuard.requireNoOpenDispute` — phải gọi trong mọi mutation mới đụng đến escrow).
      Chỉ ADMIN phân xử (`/api/admin/**`); role ADMIN không thể tự đăng ký, chỉ seed.
+  9. Chat real-time: gửi tin CHỈ qua REST (`ChatController.send` — nơi duy nhất kiểm tra gating),
+     WebSocket chỉ để broadcast. `/ws` handshake mở nhưng STOMP CONNECT bắt buộc JWT,
+     SUBSCRIBE conversation phải là participant (`StompAuthInterceptor`).
+  10. Upload: mọi file qua `FileStorageService` (whitelist extension, 5MB, tên UUID);
+      không bao giờ serve file theo tên gốc do người dùng đặt.
 
 ---
 

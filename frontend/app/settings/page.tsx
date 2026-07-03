@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { api, uploadFile } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/lib/types';
 
@@ -11,6 +11,8 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -38,7 +40,7 @@ export default function SettingsPage() {
         bio: form.bio,
         skills: form.skills.split(',').map((s) => s.trim()).filter(Boolean),
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : null,
-        avatarUrl: form.avatarUrl || null,
+        avatarUrl: form.avatarUrl,
       });
       await refresh();
       setSaved(true);
@@ -94,8 +96,49 @@ export default function SettingsPage() {
           </>
         )}
         <div>
-          <label className="label">Ảnh đại diện (URL)</label>
-          <input className="input" type="url" placeholder="https://…" value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} />
+          <label className="label">Ảnh đại diện</label>
+          <div className="flex items-center gap-4">
+            {form.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.avatarUrl} alt="Avatar" className="h-16 w-16 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-xl font-bold text-brand-700">
+                {form.fullName.charAt(0) || '?'}
+              </div>
+            )}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              className="hidden"
+              accept=".png,.jpg,.jpeg,.webp"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setUploading(true);
+                setError('');
+                try {
+                  const uploaded = await uploadFile(file);
+                  setForm((f) => ({ ...f, avatarUrl: uploaded.url }));
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Upload thất bại');
+                } finally {
+                  setUploading(false);
+                  if (avatarInputRef.current) avatarInputRef.current.value = '';
+                }
+              }}
+            />
+            <button type="button" className="btn-secondary" disabled={uploading}
+              onClick={() => avatarInputRef.current?.click()}>
+              {uploading ? 'Đang tải lên…' : '📷 Tải ảnh lên'}
+            </button>
+            {form.avatarUrl && (
+              <button type="button" className="text-sm text-rose-500 hover:underline"
+                onClick={() => setForm({ ...form, avatarUrl: '' })}>
+                Gỡ ảnh
+              </button>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-slate-400">PNG/JPG/WebP, tối đa 5MB.</p>
         </div>
 
         {saved && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">✅ Đã lưu hồ sơ.</p>}

@@ -108,15 +108,15 @@ rate limiting, tests (unit + integration).
 ### Phase 2 — Trải nghiệm & tăng trưởng (ưu tiên kế tiếp)
 | Tính năng | Ghi chú | vLancer có? |
 |---|---|---|
-| WebSocket chat real-time + typing indicator | Thay polling 5s hiện tại | Có (cơ bản) |
-| Upload file: avatar, portfolio, đính kèm job/chat | S3-compatible storage | Có |
+| ✅ WebSocket chat real-time (XONG) | STOMP + JWT, fallback polling; typing indicator để sau | Có (cơ bản) |
+| ✅ Upload file: avatar + đính kèm chat (XONG) | Local storage, whitelist ext, 5MB; portfolio + S3 để sau | Có |
 | Cổng thanh toán VNPay/MoMo/ZaloPay | Thay deposit mô phỏng | Có |
 | ✅ **Thanh toán theo milestone** (XONG) | Chia job thành mốc, nạp/giải ngân escrow từng mốc — giảm rủi ro 2 bên | Không rõ → **lợi thế** |
 | ✅ **Trung tâm giải quyết tranh chấp** (XONG) | Khiếu nại đóng băng job, admin chia escrow linh hoạt | Yếu → **lợi thế** |
 | Email notification + job alert theo topic đã lưu | Digest hằng ngày | Có |
 | Lưu job yêu thích, lịch sử xem | | Có |
 | Admin dashboard: duyệt user, gỡ job xấu, thống kê | | — |
-| SEO: SSR trang public, sitemap, schema.org JobPosting | Kéo organic traffic — kênh lớn nhất của vLancer | Có |
+| ✅ SEO nền tảng (XONG): metadata động, sitemap, robots, schema.org JobPosting | SSR toàn phần trang list + landing để sau | Có |
 | Xác thực: OTP điện thoại, KYC freelancer (huy hiệu "Đã xác minh") | | Có (KYC yếu) |
 
 ### Phase 3 — AI làm khác biệt hóa (moat thật sự so với vLancer)

@@ -5,6 +5,36 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-07-02 — Session 4: WebSocket chat real-time, upload file, SEO
+
+### WebSocket chat (STOMP)
+- `spring-boot-starter-websocket`; endpoint `/ws` (handshake permitAll — auth thật ở STOMP CONNECT).
+- `StompAuthInterceptor`: CONNECT bắt buộc JWT (native header Authorization) → gắn `StompPrincipal(email, userId)`;
+  SUBSCRIBE `/topic/conversations/{id}` chỉ cho participant của hội thoại.
+- Gửi tin vẫn qua REST `POST /api/chats/{id}/messages` (giữ nguyên gating + notification);
+  controller broadcast DTO qua `SimpMessagingTemplate` tới `/topic/conversations/{id}`.
+- Simple broker in-memory — khi scale nhiều instance: chuyển broker relay (RabbitMQ/Redis).
+- FE: `@stomp/stompjs`, badge "Real-time" xanh khi kết nối, polling fallback giãn còn 20s.
+
+### Upload file (`file/`)
+- `FileStorageService`: lưu `./uploads` (config `app.storage.dir`), tên UUID, whitelist extension
+  (ảnh/tài liệu/nén), max 5MB (multipart config). Khi scale → thay S3, giữ interface.
+- `POST /api/files` (đăng nhập) → URL tuyệt đối `/files/{uuid.ext}` (public-read, URL không đoán được).
+- FE: upload avatar ở /settings (preview + gỡ ảnh), đính kèm file trong chat (nút 📎,
+  content = URL; render ảnh inline hoặc link 📎).
+
+### SEO
+- `app/jobs/[id]/page.tsx` → server component: `generateMetadata` (title/description/OG theo job)
+  + JSON-LD **schema.org/JobPosting** (kèm baseSalary VND); UI cũ chuyển vào `components/JobDetailClient.tsx`.
+- `app/sitemap.ts` (trang tĩnh + 50 job mới nhất, force-dynamic), `app/robots.ts`
+  (chặn dashboard/settings/wallet/messages/admin). Cần đặt `NEXT_PUBLIC_SITE_URL` ở production.
+
+### Kiểm chứng
+- 14 tests xanh. E2E: WS nhận tin real-time <1s, JWT sai bị từ chối kết nối, upload png OK +
+  đọc public OK, chặn `.sh` (400), chặn ẩn danh (403). Sitemap/robots/title động + JobPosting render đúng.
+
+---
+
 ## 2026-07-02 — Session 3: Milestone payments + Dispute center (2 lợi thế cạnh tranh vs vLancer)
 
 Chủ dự án giao Claude tự chọn hướng cạnh tranh tốt nhất → chọn 2 tính năng vLancer yếu

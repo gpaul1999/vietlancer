@@ -1,4 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+/** URL WebSocket STOMP tương ứng với API. */
+export const WS_URL = API_URL.replace(/^http/, 'ws') + '/ws';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -49,3 +52,30 @@ export const api = {
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
 };
+
+export interface UploadedFile {
+  url: string;
+  originalName: string;
+  size: number;
+}
+
+/** Upload file multipart (tối đa 5MB, whitelist extension ở backend). */
+export async function uploadFile(file: File): Promise<UploadedFile> {
+  const fd = new FormData();
+  fd.append('file', file);
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_URL}/api/files`, { method: 'POST', body: fd, headers });
+  if (!res.ok) {
+    let message = `Lỗi ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.message) message = body.message;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(res.status, message);
+  }
+  return res.json();
+}
