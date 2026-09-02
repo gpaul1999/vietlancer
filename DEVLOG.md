@@ -5,6 +5,51 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-09-02 — Session 8: Hạ tầng production (CI/CD, Docker, health, backup, DEPLOY.md)
+
+Việc số 1 của lộ trình 0–6 tháng (PLAN.md mục 8). Không thêm tính năng nghiệp vụ.
+
+### CI/CD
+- `.github/workflows/ci.yml`: 2 job song song — backend (JDK 25 temurin, `gradlew test` + `bootJar`,
+  upload báo cáo test khi fail) và frontend (Node 22, `npm ci` + `npm run build` = có typecheck).
+  Chạy trên mọi push/PR, `concurrency` hủy run cũ khi push liên tiếp.
+
+### Docker hóa
+- `backend/Dockerfile`: multi-stage (temurin 25-jdk build → 25-jre runtime), tách bước tải dependency
+  để cache, chạy user không phải root, HEALTHCHECK gọi `/actuator/health`, `MaxRAMPercentage=75`
+  (JVM tự đọc giới hạn cgroup). Nếu registry thiếu tag `25-jre` → đổi sang `25-jdk`.
+- `frontend/Dockerfile`: Next **standalone** (`output: 'standalone'` trong next.config.mjs) →
+  image gọn. ⚠️ `NEXT_PUBLIC_*` nhúng lúc BUILD nên truyền qua `--build-arg`; đổi domain phải build lại.
+- `docker-compose.prod.yml`: postgres (không mở cổng ra ngoài) + backend + frontend + nginx.
+  Biến bắt buộc dùng cú pháp `${VAR:?...}` để fail sớm nếu thiếu. `.env.example` kèm hướng dẫn.
+- **Quyết định**: backend và frontend CÙNG một domain, nginx định tuyến `/api|/ws|/files|/actuator/health`
+  → backend, còn lại → frontend ⇒ không cần CORS, không cần subdomain/cert thứ hai.
+  `nginx/nginx.conf` (HTTP, chạy được ngay) + `nginx/nginx-ssl.conf.example` (sau khi có cert) —
+  tránh bẫy nginx không khởi động được vì thiếu file cert.
+
+### Ops
+- Actuator: CHỈ expose `health` (`show-details: when-authorized`), permit `/actuator/health` trong
+  SecurityConfig cho uptime monitor. Đã verify: health public trả UP, `/actuator/env|beans` → 403.
+- `server.forward-headers-strategy: framework` ở profile postgres → URL file sinh từ
+  `fromCurrentContextPath()` ra đúng https + domain thật khi đứng sau nginx.
+- `server.shutdown: graceful`; `scripts/backup-db.sh` (pg_dump + tar uploads, giữ 14 ngày) và
+  `scripts/restore-db.sh` (có xác nhận, dừng backend khi restore).
+- `DEPLOY.md`: 11 bước từ VPS trắng → HTTPS chạy thật, kèm checklist bắt buộc trước khi mở
+  cho người dùng (gồm cảnh báo pháp lý về ví/escrow) và bảng sự cố thường gặp.
+
+### Kiểm chứng
+- 23 tests xanh sau khi thêm actuator; frontend build ra `.next/standalone/server.js` (khớp CMD
+  của Dockerfile); `docker compose config` hợp lệ; YAML CI hợp lệ; smoke test admin/stats/jobs OK.
+- **Chưa verify được trong sandbox**: `docker build` và `nginx -t` (sandbox không có docker daemon).
+  Cần chạy thật ở bước 4 của DEPLOY.md.
+
+### Ghi chú môi trường
+Container sandbox bị tạo lại giữa các phiên → JDK 25 và `node_modules` phải cài lại
+(`apt-get install openjdk-25-jdk-headless`, `npm ci`). `gradle.properties` chỉ *gợi ý* đường dẫn JDK,
+không tồn tại thì Gradle bỏ qua (Docker/CI dùng JDK của môi trường).
+
+---
+
 ## 2026-07-03 — Session 7: Hoàn tất Phase 2 — email, job alert, saved jobs, KYC, admin dashboard
 
 ### Email notification (`notification/EmailService`)

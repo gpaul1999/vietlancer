@@ -2,7 +2,7 @@
 
 Nền tảng freelance marketplace với **AI tự động phân loại công việc**: client chỉ cần mô tả việc cần thuê bằng tiếng Việt tự nhiên — hệ thống phân tích và gán một hoặc **nhiều topic** liên quan, không cần chọn danh mục thủ công.
 
-> Xem kế hoạch chi tiết & lộ trình tại [PLAN.md](./PLAN.md).
+> 📋 Kế hoạch & chiến lược: [PLAN.md](./PLAN.md) · 🚀 Triển khai production: [DEPLOY.md](./DEPLOY.md) · 📓 Nhật ký phát triển: [DEVLOG.md](./DEVLOG.md)
 
 ## Kiến trúc
 
@@ -52,6 +52,15 @@ npm run dev                # http://localhost:3000
 docker compose up -d postgres
 cd backend && SPRING_PROFILES_ACTIVE=postgres ./gradlew bootRun
 ```
+
+### Deploy lên VPS (toàn stack + SSL)
+
+```bash
+cp .env.example .env      # điền SITE_URL, DB_PASSWORD, APP_JWT_SECRET, APP_ADMIN_PASSWORD
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Hướng dẫn đầy đủ 11 bước (SSL, backup tự động, checklist bảo mật): **[DEPLOY.md](./DEPLOY.md)**
 
 ## Cấu hình chính (biến môi trường)
 

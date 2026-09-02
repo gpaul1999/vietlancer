@@ -1,0 +1,6 @@
+build/
+.gradle/
+data/
+uploads/
+*.log
+.git/

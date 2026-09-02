@@ -39,7 +39,9 @@ public class SecurityConfig {
                         // /ws: handshake mở, xác thực JWT thật ở bước STOMP CONNECT (StompAuthInterceptor)
                         // /files: file đã upload là public-read (URL chứa UUID ngẫu nhiên)
                         // /error phải mở để error dispatch không bị biến thành 403 đánh lừa
-                        .requestMatchers("/api/auth/**", "/h2-console/**", "/ws/**", "/files/**", "/error").permitAll()
+                        // /actuator/health cho uptime monitor + docker healthcheck (không lộ chi tiết)
+                        .requestMatchers("/api/auth/**", "/h2-console/**", "/ws/**", "/files/**", "/error",
+                                "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/topics/**", "/api/jobs/**", "/api/users/**").permitAll()
                         .anyRequest().authenticated())

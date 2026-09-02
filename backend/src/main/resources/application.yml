@@ -26,6 +26,20 @@ spring:
 
 server:
   port: 8080
+  shutdown: graceful
+
+# Monitoring: chỉ mở /actuator/health (cho uptime check + docker healthcheck),
+# KHÔNG mở env/beans/metrics ra ngoài. Chi tiết health chỉ hiện với người đã đăng nhập.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
 
 app:
   jwt:
@@ -47,6 +61,10 @@ app:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:3000}
   storage:
     dir: ${APP_STORAGE_DIR:./uploads}
+  # Link trong email + địa chỉ người gửi
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  mail:
+    from: ${APP_MAIL_FROM:no-reply@vietlancer.vn}
   # Mật khẩu admin: dev có default để tiện demo; PRODUCTION BẮT BUỘC đặt APP_ADMIN_PASSWORD
   admin:
     password: ${APP_ADMIN_PASSWORD:password123}
@@ -69,8 +87,13 @@ spring:
     console:
       enabled: false
 
+# Đứng sau nginx: đọc X-Forwarded-Proto/Host để URL file sinh ra đúng https + domain thật
+server:
+  forward-headers-strategy: framework
+
 app:
   # Production: không seed demo, admin password bắt buộc từ env (trống → không tạo admin)
   seed-demo: ${APP_SEED_DEMO:false}
   admin:
     password: ${APP_ADMIN_PASSWORD:}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}

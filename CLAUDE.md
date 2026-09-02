@@ -17,7 +17,14 @@ cd frontend && npm run dev        # dev
 cd frontend && npm run build      # kiểm tra build trước khi commit
 
 # Demo accounts (seed sẵn): client@demo.vn / freelancer@demo.vn — password123
+
+# Production (chi tiết: DEPLOY.md)
+docker compose -f docker-compose.prod.yml up -d --build
+./scripts/backup-db.sh
 ```
+
+CI (`.github/workflows/ci.yml`) chạy `gradlew test` + `npm run build` trên mọi push/PR —
+đừng push khi test đỏ.
 
 Lưu ý môi trường sandbox: nếu `./gradlew` không tải được distribution (proxy chặn GitHub),
 dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchain Java 25 tại

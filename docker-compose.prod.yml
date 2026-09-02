@@ -1,0 +1,84 @@
+# Toàn bộ stack production: postgres + backend + frontend + nginx (reverse proxy/SSL).
+# Chạy:  docker compose -f docker-compose.prod.yml up -d --build
+# Biến môi trường đọc từ file .env cùng thư mục (xem .env.example).
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-vietlancer}
+      POSTGRES_USER: ${DB_USER:-vietlancer}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD là bắt buộc}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-vietlancer}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Không mở cổng ra ngoài — chỉ backend trong mạng nội bộ truy cập
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-vietlancer}
+      DB_USER: ${DB_USER:-vietlancer}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD là bắt buộc}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET là bắt buộc}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?APP_ADMIN_PASSWORD là bắt buộc}
+      APP_CORS_ORIGINS: ${SITE_URL}
+      APP_FRONTEND_URL: ${SITE_URL}
+      APP_STORAGE_DIR: /app/uploads
+      # Đứng sau nginx nên tin X-Forwarded-For để rate limit đúng IP thật
+      APP_TRUST_FORWARDED_HEADER: 'true'
+      APP_SEED_DEMO: ${APP_SEED_DEMO:-false}
+      APP_AI_CLASSIFIER: ${APP_AI_CLASSIFIER:-local}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SPRING_MAIL_HOST: ${SMTP_HOST:-}
+      SPRING_MAIL_PORT: ${SMTP_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SMTP_USER:-}
+      SPRING_MAIL_PASSWORD: ${SMTP_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: 'true'
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: 'true'
+    volumes:
+      - uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # NEXT_PUBLIC_* nhúng lúc build → đổi domain phải build lại frontend.
+        # Backend nằm CÙNG domain (nginx định tuyến /api, /ws, /files) → không cần CORS.
+        NEXT_PUBLIC_API_URL: ${SITE_URL}
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - certbot-www:/var/www/certbot:ro
+
+volumes:
+  pgdata:
+  uploads:
+  certbot-www:
