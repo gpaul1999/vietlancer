@@ -61,6 +61,10 @@ dùng `gradle` hệ thống (8.14, chạy trên Java 21, compile bằng toolchai
       locking) — entity mới cùng loại phải thêm @Version; xung đột trả 409 qua GlobalExceptionHandler.
   12. Endpoint public KHÔNG trả `UserDto` (có email) — dùng `PublicUserDto`. Danh sách DTO phải map
       theo lô (`toDtos` + query batch), không gọi query per-item (N+1).
+  13. Token xác thực email / đặt lại mật khẩu (`auth/VerificationToken`): chỉ lưu SHA-256, dùng một
+      lần, có hạn; `forgot-password` LUÔN trả cùng một thông điệp (chống dò email đã đăng ký).
+  14. Đổi mật khẩu phải set `user.passwordChangedAt` — `JwtAuthFilter` từ chối mọi JWT phát hành
+      trước mốc đó (đá phiên cũ ra ngoài). Endpoint mới đụng mật khẩu phải giữ quy tắc này.
 
 ---
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import type { Bid, Job, SubscriptionStatus, Wallet } from '@/lib/types';
 import { formatVnd, formatDate } from '@/lib/format';
 import JobCard from '@/components/JobCard';
+import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -34,6 +35,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <EmailVerificationBanner />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">

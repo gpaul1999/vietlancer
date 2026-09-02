@@ -38,6 +38,7 @@ public class JobService {
     private final DisputeGuard disputeGuard;
     private final MilestoneRepository milestoneRepository;
     private final SavedJobRepository savedJobRepository;
+    private final com.vietlancer.auth.EmailVerificationGuard emailVerificationGuard;
     private final com.vietlancer.topic.TopicFollowRepository topicFollowRepository;
     private final com.vietlancer.user.UserRepository userRepository;
 
@@ -55,6 +56,7 @@ public class JobService {
         if (client.getRole() != Role.CLIENT) {
             throw ApiException.forbidden("Chỉ client mới được đăng job");
         }
+        emailVerificationGuard.requireVerified(client);
         var result = topicClassifier.classify(request.title(), request.description());
         var slugs = result.topics().stream().map(TopicClassifier.TopicScore::slug).toList();
         var topics = topicRepository.findBySlugIn(slugs);

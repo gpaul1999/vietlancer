@@ -136,6 +136,8 @@ sang S3/Backblaze/máy khác (ví dụ bằng `rclone sync`).
 - [ ] Backup đã chạy thành công ít nhất 1 lần và đã thử khôi phục
 - [ ] Firewall: chỉ mở 22, 80, 443 (`ufw allow 22,80,443/tcp && ufw enable`)
 - [ ] Uptime monitor trỏ vào `https://tenmien.vn/actuator/health` (UptimeRobot, BetterStack…)
+- [ ] SMTP đã cấu hình và **thử thành công** luồng quên mật khẩu (email thật nhận được link)
+- [ ] Bật `APP_REQUIRE_VERIFIED_EMAIL=true` sau khi SMTP chạy ổn
 - [ ] **Pháp lý**: mô hình ví nội bộ + escrow có thể thuộc phạm vi điều chỉnh về trung gian
       thanh toán — tham vấn luật sư TRƯỚC khi nhận tiền thật
 - [ ] Có Điều khoản sử dụng + Chính sách bảo mật (bắt buộc khi thu thập CCCD cho KYC)
@@ -171,7 +173,20 @@ local nếu API lỗi/hết hạn mức, nên không có rủi ro gián đoạn.
 
 Điền `SMTP_HOST/PORT/USER/PASSWORD` trong `.env` rồi khởi động lại backend.
 Gợi ý dịch vụ: Amazon SES, Resend, Mailgun (Gmail SMTP chỉ hợp cho thử nghiệm).
-Không cấu hình thì hệ thống vẫn chạy bình thường, chỉ không gửi email.
+
+Chưa cấu hình SMTP thì hệ thống vẫn chạy: thông báo in-app hoạt động bình thường, còn link
+**xác thực email / đặt lại mật khẩu** được ghi ra log server (`logs backend`, dòng `[DEV]`)
+để bạn vẫn thử được luồng.
+
+**Sau khi SMTP chạy ổn**, bật bắt buộc xác thực email để chặn tài khoản ảo:
+
+```bash
+# .env
+APP_REQUIRE_VERIFIED_EMAIL=true
+```
+
+Khi bật, người dùng chưa xác thực vẫn đăng nhập/duyệt job được nhưng **không đăng job và
+không chào giá được** cho tới khi bấm link trong email.
 
 ---
 

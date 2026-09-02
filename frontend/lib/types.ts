@@ -12,6 +12,8 @@ export interface User {
   skills: string[];
   hourlyRate?: number;
   avatarUrl?: string;
+  /** Có ở /auth/me — hồ sơ public không trả trường này. */
+  emailVerified?: boolean;
   /** Có ở /auth/me. */
   kycStatus?: KycStatus;
   kycNote?: string;

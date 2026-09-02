@@ -28,6 +28,7 @@ public class BidService {
     private final SubscriptionService subscriptionService;
     private final ChatService chatService;
     private final NotificationService notificationService;
+    private final com.vietlancer.auth.EmailVerificationGuard emailVerificationGuard;
 
     @Value("${app.platform.free-bids-per-month}")
     private int freeBidsPerMonth;
@@ -39,6 +40,7 @@ public class BidService {
         if (freelancer.getRole() != Role.FREELANCER) {
             throw ApiException.forbidden("Chỉ freelancer mới được chào giá");
         }
+        emailVerificationGuard.requireVerified(freelancer);
         var job = jobRepository.findById(jobId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy job"));
         if (job.getStatus() != Job.Status.OPEN) {

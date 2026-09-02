@@ -14,6 +14,7 @@ public record UserDto(
         List<String> skills,
         BigDecimal hourlyRate,
         String avatarUrl,
+        boolean emailVerified,
         User.KycStatus kycStatus,
         String kycNote,
         Instant createdAt) {
@@ -35,6 +36,7 @@ public record UserDto(
                 skills,
                 user.getHourlyRate(),
                 user.getAvatarUrl(),
+                user.isEmailVerified(),
                 user.getKycStatus(),
                 user.getKycNote(),
                 user.getCreatedAt());

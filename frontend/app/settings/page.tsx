@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, uploadFile } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/lib/types';
+import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 
 export default function SettingsPage() {
   const { user, loading, refresh } = useAuth();
@@ -55,6 +56,9 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
+      <div className="mb-6">
+        <EmailVerificationBanner />
+      </div>
       <h1 className="text-2xl font-bold">Hồ sơ của tôi</h1>
       <p className="mt-1 text-sm text-slate-500">
         {isFreelancer

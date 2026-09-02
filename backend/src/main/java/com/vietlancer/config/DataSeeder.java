@@ -61,6 +61,7 @@ public class DataSeeder implements CommandLineRunner {
                 .password(passwordEncoder.encode(adminPassword))
                 .fullName("Quản trị viên")
                 .role(Role.ADMIN)
+                .emailVerified(true)
                 .build());
         log.info("Đã tạo tài khoản quản trị admin@vietlancer.vn");
     }
@@ -105,6 +106,7 @@ public class DataSeeder implements CommandLineRunner {
                 .password(passwordEncoder.encode("password123"))
                 .fullName("Nguyễn Văn Khách")
                 .role(Role.CLIENT)
+                .emailVerified(true)
                 .bio("Chủ doanh nghiệp nhỏ, thường xuyên cần thuê freelancer.")
                 .build());
         var freelancer = userRepository.save(User.builder()
@@ -112,6 +114,7 @@ public class DataSeeder implements CommandLineRunner {
                 .password(passwordEncoder.encode("password123"))
                 .fullName("Trần Thị Tự Do")
                 .role(Role.FREELANCER)
+                .emailVerified(true)
                 .bio("Fullstack developer 5 năm kinh nghiệm React/Spring Boot.")
                 .skills("React,Next.js,Spring Boot,PostgreSQL")
                 .hourlyRate(new BigDecimal("250000"))

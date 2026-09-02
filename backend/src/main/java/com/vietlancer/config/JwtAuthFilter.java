@@ -30,8 +30,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
-                var email = jwtService.extractEmail(header.substring(7));
-                userRepository.findByEmail(email).ifPresent(user -> {
+                var jwt = header.substring(7);
+                var email = jwtService.extractEmail(jwt);
+                var issuedAt = jwtService.extractIssuedAt(jwt);
+                userRepository.findByEmail(email).filter(u -> isStillValid(u, issuedAt)).ifPresent(user -> {
                     var auth = new UsernamePasswordAuthenticationToken(
                             user,
                             null,
@@ -44,5 +46,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
         chain.doFilter(request, response);
+    }
+
+    /**
+     * Token phát hành trước lần đổi mật khẩu gần nhất bị coi là hết hiệu lực.
+     * (JWT chỉ lưu issuedAt theo giây nên cắt passwordChangedAt về giây để so sánh cho khớp.)
+     */
+    private static boolean isStillValid(com.vietlancer.user.User user, java.time.Instant issuedAt) {
+        var changedAt = user.getPasswordChangedAt();
+        return changedAt == null
+                || !issuedAt.isBefore(changedAt.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
     }
 }

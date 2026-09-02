@@ -33,11 +33,19 @@ public class JwtService {
 
     /** Trả về email (subject) nếu token hợp lệ, ngược lại ném exception. */
     public String extractEmail(String token) {
+        return parse(token).getSubject();
+    }
+
+    /** Thời điểm token được phát hành — dùng để từ chối token cũ sau khi đổi mật khẩu. */
+    public java.time.Instant extractIssuedAt(String token) {
+        return parse(token).getIssuedAt().toInstant();
+    }
+
+    private io.jsonwebtoken.Claims parse(String token) {
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+                .getPayload();
     }
 }

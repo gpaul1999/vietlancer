@@ -56,6 +56,17 @@ public class User {
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
+    /** Email đã được xác thực qua link gửi tới hộp thư hay chưa. */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    /**
+     * Thời điểm đổi mật khẩu gần nhất. JWT phát hành TRƯỚC mốc này bị từ chối
+     * → đặt lại mật khẩu sẽ đá mọi phiên đăng nhập cũ ra ngoài.
+     */
+    private Instant passwordChangedAt;
+
     /** Trạng thái xác minh danh tính (KYC) — VERIFIED được huy hiệu "Đã xác minh". */
     public enum KycStatus {
         NONE,      // Chưa nộp hồ sơ

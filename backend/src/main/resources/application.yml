@@ -72,6 +72,10 @@ app:
   rate-limit:
     # Chỉ bật khi đứng sau reverse proxy tin cậy có ghi đè X-Forwarded-For
     trust-forwarded-header: ${APP_TRUST_FORWARDED_HEADER:false}
+  auth:
+    # Bật SAU KHI đã cấu hình SMTP: chưa xác thực email thì không được đăng job / chào giá.
+    # Bật khi chưa có SMTP sẽ khóa người dùng mới ngoài các chức năng chính.
+    require-verified-email: ${APP_REQUIRE_VERIFIED_EMAIL:false}
 
 ---
 spring:

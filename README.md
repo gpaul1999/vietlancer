@@ -76,6 +76,8 @@ Hướng dẫn đầy đủ 11 bước (SSL, backup tự động, checklist bả
 | Endpoint | Mô tả |
 |---|---|
 | `POST /api/auth/register` · `/login` | Đăng ký / đăng nhập (JWT) |
+| `POST /api/auth/forgot-password` · `/reset-password` | Quên & đặt lại mật khẩu qua email (token dùng 1 lần, hạn 1h) |
+| `POST /api/auth/verify-email` · `/resend-verification` | Xác thực địa chỉ email |
 | `POST /api/ai/classify-preview` | Xem trước topic AI sẽ gán |
 | `POST /api/jobs` · `GET /api/jobs?topic=&q=` | Đăng job (AI gán topic) / tìm kiếm |
 | `POST /api/jobs/{id}/bids` · `POST /api/bids/{id}/accept` | Chào giá / chọn freelancer (escrow) |

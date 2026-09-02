@@ -40,7 +40,12 @@ export default function LoginPage() {
             <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div>
-            <label className="label">Mật khẩu</label>
+            <div className="flex items-baseline justify-between">
+              <label className="label">Mật khẩu</label>
+              <Link href="/forgot-password" className="mb-1.5 text-sm font-medium text-brand-600 hover:underline">
+                Quên mật khẩu?
+              </Link>
+            </div>
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           {error && <p className="text-sm text-rose-600">{error}</p>}

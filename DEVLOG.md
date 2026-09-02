@@ -5,6 +5,58 @@ Quy ước: mỗi feature group một mục, mới nhất ở trên cùng. Ghi c
 
 ---
 
+## 2026-09-02 — Session 9: Hoàn thiện auth — quên mật khẩu + xác thực email
+
+Trả lời câu hỏi "đăng nhập/đăng ký hoàn thiện chưa?": trước phiên này CHƯA — thiếu 2 luồng bắt buộc.
+Phiên này bổ sung, kèm phần bảo mật đi cùng.
+
+### Token dùng một lần (`auth/`)
+- `VerificationToken` (EMAIL_VERIFICATION | PASSWORD_RESET): **chỉ lưu SHA-256 của token**, không lưu
+  giá trị gốc → DB lộ cũng không dựng lại được link. Có `expiresAt` + `usedAt` (dùng một lần).
+- `AuthTokenService.issue/consume`: phát hành xóa token cũ cùng loại (chỉ link mới nhất còn hiệu lực);
+  consume ném CÙNG một thông điệp cho mọi trường hợp sai/hết hạn/đã dùng.
+  TTL: đặt lại mật khẩu 1h, xác thực email 48h.
+- `TokenCleanupJob` @Scheduled 3:30 mỗi ngày dọn token hết hạn (đã bật `@EnableScheduling`).
+
+### Endpoints mới (đều nằm dưới `/api/auth/**` nên đã permitAll sẵn)
+`POST /forgot-password` · `/reset-password` · `/verify-email` · `/resend-verification`.
+- **Chống dò email**: forgot-password luôn trả cùng một message dù email tồn tại hay không.
+- reset-password: đổi mật khẩu → set `passwordChangedAt`, đánh dấu `emailVerified=true`
+  (đặt lại được qua email ⇒ email thuộc về người dùng), xóa các token reset còn lại,
+  gửi email cảnh báo "mật khẩu đã đổi", và **cấp JWT mới** để không bắt nhập lại mật khẩu vừa đặt.
+
+### Vô hiệu phiên cũ sau khi đổi mật khẩu (quan trọng)
+`User.passwordChangedAt` + `JwtService.extractIssuedAt` + `JwtAuthFilter.isStillValid`:
+JWT phát hành TRƯỚC mốc đổi mật khẩu bị từ chối. Không có bước này thì "đặt lại mật khẩu" vô nghĩa
+với kẻ đã chiếm được token. So sánh cắt `passwordChangedAt` về giây vì JWT `iat` chỉ có độ chính xác giây.
+
+### Xác thực email
+- `User.emailVerified`; đăng ký tự phát hành token + gửi mail. `AuthMailer` khi CHƯA có SMTP thì
+  **ghi link ra log** (`[DEV]`) → dev chạy full luồng không cần mail server.
+- `EmailVerificationGuard` (`app.auth.require-verified-email`, **mặc định false**) chặn
+  đăng job + chào giá khi chưa xác thực. Mặc định tắt để dev/self-test không bị kẹt;
+  DEPLOY.md hướng dẫn bật sau khi SMTP chạy.
+- Tài khoản seed (admin + demo) đặt `emailVerified=true`.
+
+### Frontend
+`/forgot-password`, `/reset-password?token=` (có ô nhập lại mật khẩu, tự đăng nhập sau khi đổi),
+`/verify-email?token=` (dùng `useRef` chặn gọi 2 lần do StrictMode — token dùng một lần),
+link "Quên mật khẩu?" ở trang đăng nhập, `EmailVerificationBanner` ở dashboard + settings.
+
+### Kiểm chứng
+- **31 tests xanh** (+8: xác thực email, đặt lại mật khẩu, token dùng 1 lần, token hết hạn,
+  token sai loại không dùng chéo được, chống dò email, passwordChangedAt).
+- E2E trên server thật (10 bước): link dev trong log → verify → dùng lại token 400 →
+  forgot-password 2 email cho message giống nhau → reset → mật khẩu cũ 400, mới OK →
+  **JWT cũ bị 403** → token reset dùng lại 400 → token giả 400 → tài khoản demo không bị ảnh hưởng.
+- E2E riêng với `APP_REQUIRE_VERIFIED_EMAIL=true`: chưa xác thực → đăng job 403; sau xác thực → OK.
+
+### Còn thiếu (nhóm 🟡, chưa làm theo yêu cầu chủ dự án — ưu tiên bắt buộc trước)
+Đổi mật khẩu khi đang đăng nhập, refresh token, khóa tài khoản tạm sau N lần sai,
+OAuth Google/Facebook, chuyển JWT sang httpOnly cookie.
+
+---
+
 ## 2026-09-02 — Session 8: Hạ tầng production (CI/CD, Docker, health, backup, DEPLOY.md)
 
 Việc số 1 của lộ trình 0–6 tháng (PLAN.md mục 8). Không thêm tính năng nghiệp vụ.
